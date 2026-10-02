@@ -6,5 +6,5 @@ export interface AIProvider {
   generateTopicStrategies(input: GenerationContext): Promise<Strategy[]>;
   generateCopy(input: GenerationContext, strategy: Strategy): Promise<Draft>;
   reviseCopy(input: RevisionInput): Promise<Draft>;
-  verifyCopy(input: GenerationContext, draft: Draft): Promise<Verification>;
+  verifyCopy(input: GenerationContext, draft: Draft, baseline?: Draft): Promise<Verification>;
 }

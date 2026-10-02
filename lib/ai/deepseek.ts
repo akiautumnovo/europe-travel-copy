@@ -30,10 +30,12 @@ export class DeepSeekProvider implements AIProvider {
     return this.callJson(`${scope}\n修改要求：${input.instruction}\n只返回与输入相同 id、相同顺序的 JSON blocks。禁止改变锁定事实，禁止编造经历或数据。
 锁定段落：${JSON.stringify(locked)}\n锁定事实：${JSON.stringify(input.facts)}\n当前段落：${JSON.stringify(input.blocks)}`, draftSchema);
   }
-  async verifyCopy(input: GenerationContext, draft: Draft): Promise<Verification> {
+  async verifyCopy(input: GenerationContext, draft: Draft, baseline?: Draft): Promise<Verification> {
+    const revisionRule=baseline?`这是修改后的文案。只检查相对原稿新增或改变的事实性陈述；原稿中逐字保留的陈述不是本次修改新增事实，不得仅因锁定事实为空而判失败。若本次只调整语气、长度或销售味且未引入新事实，fact_safe 必须为 true。\n修改前原稿：${JSON.stringify(baseline.blocks)}`:"这是初稿。具体的价格、日期、天数、地点、酒店、航班、名额必须来自锁定事实；一般性的专业建议可以保留，但不得伪装成精确、可核验的数据。";
     return this.callJson(`核验朋友圈。只返回 JSON：{"fact_safe":true,"fact_issues":[],"naturalness_issues":[]}。
-客观事实和营销信息必须来自锁定事实。检查套路开头、连续问句、“不是……而是……”滥用、空洞形容词、宝藏、封神、此生必去、过度感叹号、机械CTA、虚构第一人称/客户经历/销售数据。
-锁定事实：${JSON.stringify(input.facts)}\n文案：${JSON.stringify(draft.blocks)}`, verificationSchema);
+${revisionRule}
+检查套路开头、连续问句、“不是……而是……”滥用、空洞形容词、宝藏、封神、此生必去、过度感叹号、机械CTA、虚构第一人称/客户经历/销售数据。
+锁定事实：${JSON.stringify(input.facts)}\n待核验文案：${JSON.stringify(draft.blocks)}`, verificationSchema);
   }
 
   private async callJson<T>(prompt:string, schema:{parse:(value:unknown)=>T}):Promise<T>{
