@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, BookOpenText, Check, ChevronRight, Clock3, Copy, FileUp, Image as ImageIcon, Layers3, Lightbulb, LogOut, MessageCircleMore, Package, PenLine, Plus, RefreshCw, Send, Sparkles, Trash2, Upload, UserRound, WandSparkles } from "lucide-react";
 import AnalysisWorkspace from "./analysis-workspace";
+import CreationWorkspace from "./creation-workspace";
 
 type MainView = "inspiration" | "products" | "assets" | "style" | "history";
-type View = MainView | "analysis" | "directions" | "editor";
+type View = MainView | "analysis" | "creation" | "directions" | "editor";
 
 const navItems: { id: MainView; label: string; icon: typeof Lightbulb }[] = [
   { id: "inspiration", label: "灵感", icon: Lightbulb }, { id: "products", label: "产品", icon: Package },
@@ -33,8 +34,9 @@ export default function Home() {
   const [selectedDirection, setSelectedDirection] = useState(1);
   const [toast, setToast] = useState("");
   const [analysisText, setAnalysisText] = useState("");
+  const [creationTopic,setCreationTopic]=useState(""),[resumeContentId,setResumeContentId]=useState("");
   const [draft, setDraft] = useState("瑞士看起来不大，但每天换酒店并不等于看得更多。\n\n真正影响体验的，往往是换乘、行李和天气。第一次去，把两晚以上留给同一个区域，行程会从容很多。\n\n旅行不是把地图上的点连得越密越好。留一点空白，才有机会真正感受到一个地方。\n\n如果你正在计划第一次瑞士旅行，可以先从减少一次换酒店开始。🇨🇭");
-  const activeMain: MainView = ["analysis", "directions", "editor"].includes(view) ? "inspiration" : (view as MainView);
+  const activeMain: MainView = ["analysis", "creation", "directions", "editor"].includes(view) ? "inspiration" : (view as MainView);
   useEffect(() => { fetch("/api/bootstrap", { method:"POST" }).catch(() => undefined); }, []);
   function flash(message: string) { setToast(message); window.setTimeout(() => setToast(""), 1800); }
 
@@ -43,11 +45,12 @@ export default function Home() {
       <button className="brand" onClick={() => setView("inspiration")} aria-label="返回今日灵感"><span className="brand-mark">旅</span><span><strong>旅笺</strong><small>朋友圈内容助手</small></span></button>
       <nav aria-label="主导航">{navItems.map((item) => { const Icon = item.icon; const longLabel = item.label === "灵感" ? "今日灵感" : item.label === "风格" ? "我的风格" : item.label === "历史" ? "内容历史" : item.label; return <button key={item.id} className={activeMain === item.id ? "nav-item active" : "nav-item"} onClick={() => setView(item.id)}><Icon size={19}/><span>{longLabel}</span></button>; })}</nav>
       <div className="account-card"><span className="account-avatar">A</span><div><strong>Aki</strong><small>数据已安全保存</small></div><a href="/signout-with-chatgpt?return_to=/" title="退出登录"><LogOut size={17}/></a></div>
-      <div className="phase-note"><span>Phase 2</span><p>AI 解析 · 事实确认 · 锁定</p></div>
+      <div className="phase-note"><span>Phase 3</span><p>三方向 · 段落编辑 · 版本</p></div>
     </aside>
     <main className={view === "editor" ? "main-content editor-main" : "main-content"}>
-      {view === "inspiration" && <Inspiration onGenerate={() => setView("directions")} onAnalyze={(value)=>{setAnalysisText(value);setView("analysis")}} onMock={flash}/>} {view === "products" && <Products onMock={flash}/>} {view === "assets" && <Assets onMock={flash}/>} {view === "style" && <Style/>} {view === "history" && <History/>}
+      {view === "inspiration" && <Inspiration onGenerate={(topic) => {setCreationTopic(topic);setResumeContentId("");setView("creation")}} onAnalyze={(value)=>{setAnalysisText(value);setView("analysis")}} onMock={flash}/>} {view === "products" && <Products onMock={flash}/>} {view === "assets" && <Assets onMock={flash}/>} {view === "style" && <Style/>} {view === "history" && <History onOpen={(id)=>{setResumeContentId(id);setCreationTopic("");setView("creation")}}/>}
       {view === "analysis" && <AnalysisWorkspace initialText={analysisText} onBack={()=>setView("inspiration")} notify={flash}/>} 
+      {view === "creation" && <CreationWorkspace initialTopic={creationTopic} initialContentId={resumeContentId||undefined} onBack={()=>setView("inspiration")} notify={flash}/>} 
       {view === "directions" && <Directions selected={selectedDirection} onSelect={setSelectedDirection} onBack={() => setView("inspiration")} onContinue={() => { setDraft(directions[selectedDirection].copy + "\n\n如果你正在计划第一次瑞士旅行，可以先从减少一次换酒店开始。🇨🇭"); setView("editor"); }}/>} 
       {view === "editor" && <Editor draft={draft} setDraft={setDraft} onBack={() => setView("directions")} onMock={flash}/>} 
     </main>
@@ -58,11 +61,11 @@ export default function Home() {
 
 function PageHeader({ kicker, title, action }: { kicker: string; title: string; action?: React.ReactNode }) { return <header className="page-header"><div><p className="kicker">{kicker}</p><h1>{title}</h1></div>{action}</header>; }
 
-function Inspiration({ onGenerate, onAnalyze, onMock }: { onGenerate: () => void; onAnalyze:(text:string)=>void; onMock: (s: string) => void }) {
+function Inspiration({ onGenerate, onAnalyze, onMock }: { onGenerate: (topic:string) => void; onAnalyze:(text:string)=>void; onMock: (s: string) => void }) {
   const [quickText,setQuickText]=useState("");
   return <div className="page-wrap inspiration-page"><PageHeader kicker="10月2日 · 星期五" title="今天发什么？" action={<button className="icon-action" onClick={() => onMock("已换一组模拟选题")}><RefreshCw size={17}/>换一组</button>}/>
     <section className="recommendation-reason"><div className="reason-icon"><Sparkles size={20}/></div><div><p>今天为什么这样推荐</p><h2>今天建议轻一点。最近几条都是产品内容，今天更适合发一篇欧洲生活方式内容。</h2></div></section>
-    <section className="section-block"><div className="section-heading"><div><span>今日推荐</span><h2>4 个值得写的角度</h2></div><small>模拟选题</small></div><div className="topic-grid">{topics.map((topic,i) => <article className={`topic-card ${topic.tone}`} key={topic.place}><div className="topic-art"><span className="big-flag">{topic.flag}</span><span className="place-label">{topic.place}</span><span className="card-index">0{i+1}</span></div><div className="topic-body"><span className="tag">{topic.type}</span><h3>{topic.title}</h3><p>{topic.reason}</p><div className="card-actions"><button className="primary-button" onClick={onGenerate}><WandSparkles size={17}/>生成朋友圈</button><button className="text-button" onClick={() => onMock("已切换到另一个模拟角度")}>换个角度</button></div></div></article>)}</div></section>
+    <section className="section-block"><div className="section-heading"><div><span>今日推荐</span><h2>4 个值得写的角度</h2></div><small>推荐选题</small></div><div className="topic-grid">{topics.map((topic,i) => <article className={`topic-card ${topic.tone}`} key={topic.place}><div className="topic-art"><span className="big-flag">{topic.flag}</span><span className="place-label">{topic.place}</span><span className="card-index">0{i+1}</span></div><div className="topic-body"><span className="tag">{topic.type}</span><h3>{topic.title}</h3><p>{topic.reason}</p><div className="card-actions"><button className="primary-button" onClick={()=>onGenerate(topic.title)}><WandSparkles size={17}/>生成朋友圈</button><button className="text-button" onClick={() => onMock("已切换到另一个推荐角度")}>换个角度</button></div></div></article>)}</div></section>
     <section className="quick-start"><div><span className="mini-label">AI 输入理解</span><h2>已经有内容？先识别事实</h2><p>粘贴产品资料或同事朋友圈，确认事实后再用于创作。</p></div><div className="quick-input"><textarea value={quickText} onChange={e=>setQuickText(e.target.value)} aria-label="粘贴待解析内容" placeholder="粘贴产品、同事朋友圈或参考内容…"/><button onClick={()=>onAnalyze(quickText)} aria-label="开始解析"><Send size={19}/></button></div></section>
   </div>;
 }
@@ -89,7 +92,7 @@ function Assets({ onMock }: { onMock: (s: string) => void }) { const [items,setI
 function Style() { return <div className="page-wrap narrow"><PageHeader kicker="我的风格" title="让文字慢慢更像你"/><section className="style-hero"><div className="dna-orbit"><span>DNA</span></div><div><span className="tag">冷启动中</span><h2>你的 Style DNA 还在形成中。</h2><p>不需要先填一份很长的问卷。随着你使用，它会逐步理解你真正喜欢的表达。</p></div></section><section className="learning-card"><h2>系统会根据</h2>{[[Check,"你最终采用的内容"],[PenLine,"你亲手做过的修改"],[MessageCircleMore,"你明确喜欢或不喜欢的表达"]].map(([Icon,text],i) => { const C=Icon as typeof Check; return <div className="learning-row" key={i}><span><C size={18}/></span><p>{String(text)}</p></div>; })}</section></div>; }
 
 type HistoryItem={id:string;title:string;status:string;createdAt:string};
-function History() { const [rows,setRows]=useState<HistoryItem[]>([]),[title,setTitle]=useState("");const load=()=>fetch("/api/contents").then(r=>r.ok?r.json() as Promise<HistoryItem[]>:Promise.reject()).then(data=>setRows(data)).catch(()=>undefined);useEffect(()=>{void load();},[]);async function save(){const r=await fetch("/api/contents",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({title})});if(r.ok){setTitle("");void load()}}return <div className="page-wrap"><PageHeader kicker="内容历史" title="最近写过的朋友圈"/><section className="history-save"><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="输入一条模拟内容标题"/><button className="primary-button" onClick={save}>保存模拟记录</button></section><div className="history-list">{rows.map((row,i)=><article className="history-row" key={row.id}><div className="history-number">{String(i+1).padStart(2,"0")}</div><div className="history-copy"><h2>{row.title}</h2><p>{new Date(row.createdAt).toLocaleDateString("zh-CN")} · 专业顾问型</p></div><span className="history-status">{row.status==="adopted"?"已采用":"草稿"}</span></article>)}</div>{rows.length===0&&<div className="empty-hint"><Clock3 size={22}/><div><strong>还没有内容记录</strong><p>保存一条模拟记录，验证内容历史可以持久化。</p></div></div>}</div>; }
+function History({onOpen}:{onOpen:(id:string)=>void}) { const [rows,setRows]=useState<HistoryItem[]>([]);const load=()=>fetch("/api/contents").then(r=>r.ok?r.json() as Promise<HistoryItem[]>:Promise.reject()).then(data=>setRows(data)).catch(()=>undefined);useEffect(()=>{void load();},[]);return <div className="page-wrap"><PageHeader kicker="内容历史" title="最近写过的朋友圈"/><div className="history-list">{rows.map((row,i)=><button className="history-row history-button" onClick={()=>onOpen(row.id)} key={row.id}><div className="history-number">{String(i+1).padStart(2,"0")}</div><div className="history-copy"><h2>{row.title}</h2><p>{new Date(row.createdAt).toLocaleDateString("zh-CN")} · 点击继续编辑</p></div><span className="history-status">{row.status==="adopted"?"已采用":"草稿"}</span></button>)}</div>{rows.length===0&&<div className="empty-hint"><Clock3 size={22}/><div><strong>还没有内容记录</strong><p>完成一次三方向生成后会自动保存在这里。</p></div></div>}</div>; }
 
 function Directions({selected,onSelect,onBack,onContinue}:{selected:number;onSelect:(n:number)=>void;onBack:()=>void;onContinue:()=>void}) { return <div className="page-wrap directions-page"><button className="back-button" onClick={onBack}><ArrowLeft size={18}/>返回今日灵感</button><PageHeader kicker="创作工作台 · 第 1 步" title="选择一个更像你的方向"/><p className="page-intro">同一个主题，先从三种不同表达开始。选中后还可以继续修改。</p><div className="direction-grid">{directions.map((item,i)=>{const Icon=item.icon;return <button key={item.name} className={selected===i?"direction-card selected":"direction-card"} onClick={()=>onSelect(i)}><div className="direction-top"><span className="direction-icon"><Icon size={20}/></span>{selected===i&&<span className="selected-check"><Check size={15}/></span>}</div><span className="direction-eyebrow">{item.eyebrow}</span><h2>{item.name}</h2><p>{item.copy}</p><span className="choose-label">{selected===i?"已选择":"选择这个方向"}</span></button>})}</div><div className="continue-bar"><div><span>当前选择</span><strong>{directions[selected].name}</strong></div><button className="primary-button" onClick={onContinue}>用这个继续<ChevronRight size={18}/></button></div></div>; }
 

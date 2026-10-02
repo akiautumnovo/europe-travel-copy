@@ -1,4 +1,4 @@
-import { analysisResultSchema, type AnalysisInput, type AnalysisResult } from "./types";
+import { analysisResultSchema, draftSchema, strategiesSchema, verificationSchema, type AnalysisInput, type AnalysisResult, type Draft, type GenerationContext, type RevisionInput, type Strategy, type Verification } from "./types";
 import type { AIProvider } from "./provider";
 
 type DeepSeekConfig = { apiKey: string; baseUrl: string; model: string };
@@ -13,6 +13,33 @@ export class DeepSeekProvider implements AIProvider {
 
   async extractProduct(input: AnalysisInput) { return this.run(input); }
   async analyzeReference(input: AnalysisInput) { return this.run(input); }
+  async generateTopicStrategies(input: GenerationContext): Promise<Strategy[]> {
+    const result = await this.callJson(`为一条欧洲旅游朋友圈设计三个明显不同的内容策略，固定 type 为 life、advisor、emotional，各一个。只返回 JSON：{"strategies":[{"type":"life","title":"生活分享型","approach":"策略","opening":"前2-3行预览"},...]}
+主题：${input.topic}\n销售强度：${input.salesIntensity}\n锁定事实：${JSON.stringify(input.facts)}\n风格偏好：${input.stylePreferences.join("；")||"自然、克制、可信"}`, strategiesSchema);
+    return result.strategies;
+  }
+  async generateCopy(input: GenerationContext, strategy: Strategy): Promise<Draft> {
+    return this.callJson(`只为“${strategy.title}”生成一篇朋友圈，不要生成另外两个方向。策略：${strategy.approach}。销售强度 ${input.salesIntensity}（0纯内容，1自然关联，2明确转化）。
+只返回 JSON：{"blocks":[{"id":"b1","text":"段落文字","category":"objective_fact|professional_advice|personal_experience|marketing|literary"}]}。
+每段一个 block，3-6 段。禁止编造第一人称经历、客户经历、销售数据；价格、日期、地点、天数、酒店、航班、名额只能使用锁定事实且不得改写数值。
+主题：${input.topic}\n锁定事实：${JSON.stringify(input.facts)}\n风格偏好：${input.stylePreferences.join("；")||"自然、克制、像真实朋友圈"}`, draftSchema);
+  }
+  async reviseCopy(input: RevisionInput): Promise<Draft> {
+    const locked = input.blocks.filter(b=>input.lockedBlockIds.includes(b.id));
+    const scope = input.targetBlockId ? `只允许修改 id=${input.targetBlockId} 的段落，其他段落逐字保留。` : "修改全文，但 lockedBlockIds 中的段落必须逐字保留。";
+    return this.callJson(`${scope}\n修改要求：${input.instruction}\n只返回与输入相同 id、相同顺序的 JSON blocks。禁止改变锁定事实，禁止编造经历或数据。
+锁定段落：${JSON.stringify(locked)}\n锁定事实：${JSON.stringify(input.facts)}\n当前段落：${JSON.stringify(input.blocks)}`, draftSchema);
+  }
+  async verifyCopy(input: GenerationContext, draft: Draft): Promise<Verification> {
+    return this.callJson(`核验朋友圈。只返回 JSON：{"fact_safe":true,"fact_issues":[],"naturalness_issues":[]}。
+客观事实和营销信息必须来自锁定事实。检查套路开头、连续问句、“不是……而是……”滥用、空洞形容词、宝藏、封神、此生必去、过度感叹号、机械CTA、虚构第一人称/客户经历/销售数据。
+锁定事实：${JSON.stringify(input.facts)}\n文案：${JSON.stringify(draft.blocks)}`, verificationSchema);
+  }
+
+  private async callJson<T>(prompt:string, schema:{parse:(value:unknown)=>T}):Promise<T>{
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30_000);
+    try{const response=await fetch(`${this.config.baseUrl.replace(/\/$/,"")}/chat/completions`,{method:"POST",headers:{"content-type":"application/json",authorization:`Bearer ${this.config.apiKey}`},body:JSON.stringify({model:this.config.model,temperature:.35,response_format:{type:"json_object"},messages:[{role:"system",content:"你是克制、可信的欧洲旅游朋友圈编辑。严格输出指定 JSON，不添加 Markdown。"},{role:"user",content:prompt}]}),signal:controller.signal});if(!response.ok)throw new Error(`AI 服务暂时不可用（${response.status}）`);const payload=await response.json() as {choices?:Array<{message?:{content?:string}}>} ;const content=payload.choices?.[0]?.message?.content;if(!content)throw new Error("AI 没有返回可用内容");return schema.parse(JSON.parse(content.replace(/^```json\s*|\s*```$/g,"")))}catch(error){if(error instanceof DOMException&&error.name==="AbortError")throw new Error("AI 处理超时，请稍后重试");if(error instanceof SyntaxError)throw new Error("AI 返回格式无效，请重试");throw error}finally{clearTimeout(timer)}
+  }
 
   private async run(input: AnalysisInput): Promise<AnalysisResult> {
     const referenceRule = input.type === "reference"

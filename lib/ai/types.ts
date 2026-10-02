@@ -38,3 +38,22 @@ export type AnalysisResult = z.infer<typeof analysisResultSchema>;
 export type HardFact = z.infer<typeof hardFactSchema>;
 
 export type AnalysisInput = { type: AnalysisInputType; text: string };
+
+export const strategyTypeSchema = z.enum(["life", "advisor", "emotional"]);
+export const strategySchema = z.object({
+  type: strategyTypeSchema,
+  title: z.string().min(1),
+  approach: z.string().min(1),
+  opening: z.string().min(1),
+});
+export const strategiesSchema = z.object({ strategies: z.array(strategySchema).length(3) });
+export const blockSchema = z.object({ id: z.string().min(1), text: z.string().min(1), category: z.enum(["objective_fact","professional_advice","personal_experience","marketing","literary"]) });
+export const draftSchema = z.object({ blocks: z.array(blockSchema).min(1) });
+export const verificationSchema = z.object({ fact_safe: z.boolean(), fact_issues: z.array(readableItemSchema), naturalness_issues: z.array(readableItemSchema) });
+export type Strategy = z.infer<typeof strategySchema>;
+export type DraftBlock = z.infer<typeof blockSchema>;
+export type Draft = z.infer<typeof draftSchema>;
+export type Verification = z.infer<typeof verificationSchema>;
+export type LockedFact = { field:string; value:string; source_quote?:string };
+export type GenerationContext = { topic:string; facts:LockedFact[]; salesIntensity:0|1|2; stylePreferences:string[] };
+export type RevisionInput = GenerationContext & { blocks:DraftBlock[]; lockedBlockIds:string[]; instruction:string; targetBlockId?:string };
