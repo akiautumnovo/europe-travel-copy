@@ -1,4 +1,4 @@
-import { analysisResultSchema, draftSchema, strategiesSchema, verificationSchema, type AnalysisInput, type AnalysisResult, type Draft, type GenerationContext, type RevisionInput, type Strategy, type Verification } from "./types";
+import { analysisResultSchema, draftSchema, inspirationDraftSchema, strategiesSchema, verificationSchema, type AnalysisInput, type AnalysisResult, type Draft, type GenerationContext, type InspirationDraft, type InspirationGenerationInput, type RevisionInput, type Strategy, type Verification } from "./types";
 import type { AIProvider } from "./provider";
 
 type DeepSeekConfig = { apiKey: string; baseUrl: string; model: string };
@@ -36,6 +36,22 @@ export class DeepSeekProvider implements AIProvider {
 ${revisionRule}
 检查套路开头、连续问句、“不是……而是……”滥用、空洞形容词、宝藏、封神、此生必去、过度感叹号、机械CTA、虚构第一人称/客户经历/销售数据。
 锁定事实：${JSON.stringify(input.facts)}\n待核验文案：${JSON.stringify(draft.blocks)}`, verificationSchema);
+  }
+  async generateInspirations(input:InspirationGenerationInput):Promise<InspirationDraft>{
+    return this.callJson(`生成四个中文欧洲旅游朋友圈选题。只返回 JSON：{"topics":[{"title":"","country":"","flag":"🇪🇺","reason":"","audience":"","content_type":"","source_index":null}]}。
+硬性要求：
+1. 标题必须自然中文，禁止直接复制或翻译网页标题，禁止出现英文标题；
+2. 四条必须在核心问题上真正不同，不得只是替换国家、城市或同义改写；
+3. 分别覆盖不同维度：行程决策、客群需求、当地体验、近期信息；开头结构和内容价值也要不同；
+4. 不得重复“为什么不要排满/留白/慢旅行”等同一逻辑；
+5. 有可靠搜索素材时最多两条使用，source_index 指向素材序号；其余为稳定常青角度并填 null；
+6. 搜索素材只作为事实背景，不把机构网页标题当选题；不得扩写素材未包含的具体事实；
+7. 避开 previousTitles 和 recentCountries 中近期高频内容。
+主推产品：${input.productName||"无"}
+刷新次数：${input.refreshNo}
+上一组选题：${JSON.stringify(input.previousTitles)}
+近期国家：${JSON.stringify(input.recentCountries)}
+搜索素材：${JSON.stringify(input.sourceSummaries)}`,inspirationDraftSchema);
   }
 
   private async callJson<T>(prompt:string, schema:{parse:(value:unknown)=>T}):Promise<T>{

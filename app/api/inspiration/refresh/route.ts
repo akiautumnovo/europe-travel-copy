@@ -1,4 +1,5 @@
 import { getSearchProvider } from "../../../../lib/search";
+import { getAIProvider } from "../../../../lib/ai";
 import { evergreenTopics,recommendationReason,searchThemes,type InspirationTopic } from "../../../../lib/inspiration";
 import { db,json,requireApiUser } from "../../_shared";
 
@@ -16,18 +17,22 @@ export async function POST(){
  let topics=evergreenTopics(`${today}:refresh:${count}:${Date.now()}`,product?.name,excluded);
  let reason=recommendationReason(usedCountries,product?.name,true);
  const provider=getSearchProvider();
+ let searchSources:NonNullable<InspirationTopic["sources"]>=[];
  if(provider){
   try{
    const theme=searchThemes[count%searchThemes.length];
    const result=await provider.search(`${theme} ${today} different destinations current`,{maxResults:10,depth:"advanced"});
    const priorUrls=new Set(previous?.topics?.flatMap(t=>t.sources?.map(s=>s.url)||[])||[]);
    const useful=result.sources.filter(s=>s.tier<=3&&!priorUrls.has(s.url)&&/travel|touris|visa|rail|train|flight|museum|visitor|border|strike|festival|event|airport/i.test(`${s.title} ${s.content}`)).slice(0,2);
-   const fresh=useful.map((source,index):InspirationTopic=>({id:`fresh-${count}-${index}-${source.url}`,country:"欧洲",flag:"🇪🇺",title:source.title,reason:"来自本次刷新发现的近期可靠旅行信息，适合及时提醒客户。",audience:"近期计划欧洲出行的客人",contentType:index?"旅行动态":"最新提醒",productRelated:false,verification:"verified",sources:[source]}));
-   topics=[...fresh,...topics.filter(t=>!fresh.some(f=>f.title===t.title))].slice(0,4);
-   if(fresh.length)reason=`已切换联网搜索主题，并找到 ${fresh.length} 条新的可靠动态；其余选题也已更换目的地和角度。`;
+   searchSources=useful;
   }catch{reason+=" 本次联网搜索暂时不可用，已从扩展常青题库中更换一组。"}
  }
- const daily={date:today,reason,topics,refreshCount:count};
+ try{
+  const generated=await getAIProvider().generateInspirations({sourceSummaries:searchSources.map(s=>({title:s.title,content:s.content.slice(0,900),institution:s.institution})),previousTitles:previous?.topics?.map(t=>t.title)||[],recentCountries:usedCountries.slice(0,12),productName:product?.name,refreshNo:count});
+  topics=generated.topics.map((topic,index)=>{const source=topic.source_index===null?undefined:searchSources[topic.source_index];return{id:`ai-${count}-${index}-${Date.now()}`,country:topic.country,flag:topic.flag,title:topic.title,reason:topic.reason,audience:topic.audience,contentType:topic.content_type,productRelated:Boolean(product?.name&&topic.title.includes(product.name.slice(0,2))),verification:source?"verified":"evergreen",sources:source?[source]:undefined}});
+  reason=searchSources.length?"这组由近期可靠信息与常青主题共同生成，四条分别解决不同的旅行问题。":"这组已重新组合客群、场景、决策问题和表达结构，而不只是替换目的地。";
+ }catch{reason+=" AI 选题整理暂时不可用，已使用多维度候选池。"}
+ const daily={date:today,reason,topics,refreshCount:count,algorithmVersion:2};
  settings.dailyInspiration=daily;
  await db().prepare("UPDATE profiles SET settings=?,updated_at=? WHERE id=?").bind(JSON.stringify(settings),new Date().toISOString(),user.userId).run();
  return json({...daily,searchConfigured:Boolean(provider)});

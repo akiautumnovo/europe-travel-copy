@@ -57,3 +57,6 @@ export type Verification = z.infer<typeof verificationSchema>;
 export type LockedFact = { field:string; value:string; source_quote?:string };
 export type GenerationContext = { topic:string; facts:LockedFact[]; salesIntensity:0|1|2; stylePreferences:string[] };
 export type RevisionInput = GenerationContext & { blocks:DraftBlock[]; lockedBlockIds:string[]; instruction:string; targetBlockId?:string };
+export const inspirationDraftSchema=z.object({topics:z.array(z.object({title:z.string().min(4).refine(value=>(value.match(/[\u4e00-\u9fff]/g)||[]).length>=4,"标题必须为中文"),country:z.string().min(1),flag:z.string().min(1),reason:z.string().min(4),audience:z.string().min(2),content_type:z.string().min(2),source_index:z.number().int().min(0).nullable()})).length(4)});
+export type InspirationDraft=z.infer<typeof inspirationDraftSchema>;
+export type InspirationGenerationInput={sourceSummaries:Array<{title:string;content:string;institution:string}>;previousTitles:string[];recentCountries:string[];productName?:string;refreshNo:number};
