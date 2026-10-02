@@ -1,0 +1,309 @@
+0 verbose cli D:\node\node.exe D:\node\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.19.0
+2 info using node@v24.21.0
+3 silly config load:file:D:\node\node_modules\npm\npmrc
+4 silly config load:file:D:\agent\2026-10-02\chatgpt-conversation-6abf5153-35bc-83ea-97ff-3\work\europe-travel-copy\.npmrc
+5 silly config load:file:C:\Users\Aki\.npmrc
+6 silly config load:file:C:\Users\Aki\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install unpdf mammoth read-excel-file
+8 verbose argv "install" "unpdf" "mammoth" "read-excel-file" "--cache" ".npm-cache"
+9 verbose logfile logs-max:10 dir:D:\agent\2026-10-02\chatgpt-conversation-6abf5153-35bc-83ea-97ff-3\work\europe-travel-copy\.npm-cache\_logs\2026-10-02T10_43_57_691Z-
+10 verbose logfile D:\agent\2026-10-02\chatgpt-conversation-6abf5153-35bc-83ea-97ff-3\work\europe-travel-copy\.npm-cache\_logs\2026-10-02T10_43_57_691Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 verbose shrinkwrap failed to load node_modules/.package-lock.json out of date, updated: node_modules
+14 silly idealTree buildDeps
+15 silly fetch manifest unpdf@*
+16 silly packumentCache full:https://registry.npmjs.org/unpdf cache-miss
+17 http fetch GET 200 https://registry.npmjs.org/unpdf 1849ms (cache miss)
+18 silly packumentCache full:https://registry.npmjs.org/unpdf set size:undefined disposed:false
+19 silly fetch manifest @napi-rs/canvas@^0.1.69 || ^1.0.0
+20 silly packumentCache full:https://registry.npmjs.org/@napi-rs%2fcanvas cache-miss
+21 http fetch GET 200 https://registry.npmjs.org/@napi-rs%2fcanvas 694ms (cache miss)
+22 silly packumentCache full:https://registry.npmjs.org/@napi-rs%2fcanvas set size:undefined disposed:false
+23 silly fetch manifest mammoth@*
+24 silly packumentCache full:https://registry.npmjs.org/mammoth cache-miss
+25 http fetch GET 200 https://registry.npmjs.org/mammoth 322ms (cache miss)
+26 silly packumentCache full:https://registry.npmjs.org/mammoth set size:undefined disposed:false
+27 silly fetch manifest read-excel-file@*
+28 silly packumentCache full:https://registry.npmjs.org/read-excel-file cache-miss
+29 http fetch GET 200 https://registry.npmjs.org/read-excel-file 591ms (cache miss)
+30 silly packumentCache full:https://registry.npmjs.org/read-excel-file set size:undefined disposed:false
+31 silly placeDep ROOT mammoth@1.13.0 OK for: site-creator-vinext-starter@0.1.0 want: *
+32 silly placeDep ROOT read-excel-file@9.3.10 OK for: site-creator-vinext-starter@0.1.0 want: *
+33 silly placeDep ROOT unpdf@1.8.1 OK for: site-creator-vinext-starter@0.1.0 want: *
+34 silly fetch manifest lop@^0.4.2
+35 silly packumentCache full:https://registry.npmjs.org/lop cache-miss
+36 silly fetch manifest jszip@^3.7.1
+37 silly packumentCache full:https://registry.npmjs.org/jszip cache-miss
+38 silly fetch manifest argparse@~1.0.3
+39 silly packumentCache full:https://registry.npmjs.org/argparse cache-miss
+40 silly fetch manifest base64-js@^1.5.1
+41 silly packumentCache full:https://registry.npmjs.org/base64-js cache-miss
+42 silly fetch manifest underscore@^1.13.1
+43 silly packumentCache full:https://registry.npmjs.org/underscore cache-miss
+44 silly fetch manifest xmlbuilder@^10.0.0
+45 silly packumentCache full:https://registry.npmjs.org/xmlbuilder cache-miss
+46 silly fetch manifest @xmldom/xmldom@^0.8.6
+47 silly packumentCache full:https://registry.npmjs.org/@xmldom%2fxmldom cache-miss
+48 silly fetch manifest dingbat-to-unicode@^1.0.1
+49 silly packumentCache full:https://registry.npmjs.org/dingbat-to-unicode cache-miss
+50 silly fetch manifest saxen@^11.1.0
+51 silly packumentCache full:https://registry.npmjs.org/saxen cache-miss
+52 silly fetch manifest fflate@^0.8.3
+53 silly packumentCache full:https://registry.npmjs.org/fflate cache-miss
+54 silly fetch manifest worker-f@^0.1.12
+55 silly packumentCache full:https://registry.npmjs.org/worker-f cache-miss
+56 silly fetch manifest unzipper-esm@^0.13.3
+57 silly packumentCache full:https://registry.npmjs.org/unzipper-esm cache-miss
+58 http fetch GET 200 https://registry.npmjs.org/lop 285ms (cache miss)
+59 silly packumentCache full:https://registry.npmjs.org/lop set size:undefined disposed:false
+60 http fetch GET 200 https://registry.npmjs.org/dingbat-to-unicode 1302ms (cache miss)
+61 silly packumentCache full:https://registry.npmjs.org/dingbat-to-unicode set size:undefined disposed:false
+62 http fetch GET 200 https://registry.npmjs.org/argparse 1311ms (cache miss)
+63 silly packumentCache full:https://registry.npmjs.org/argparse set size:undefined disposed:false
+64 http fetch GET 200 https://registry.npmjs.org/unzipper-esm 1312ms (cache miss)
+65 silly packumentCache full:https://registry.npmjs.org/unzipper-esm set size:undefined disposed:false
+66 http fetch GET 200 https://registry.npmjs.org/saxen 1321ms (cache miss)
+67 silly packumentCache full:https://registry.npmjs.org/saxen set size:undefined disposed:false
+68 http fetch GET 200 https://registry.npmjs.org/fflate 1324ms (cache miss)
+69 silly packumentCache full:https://registry.npmjs.org/fflate set size:undefined disposed:false
+70 http fetch GET 200 https://registry.npmjs.org/worker-f 1343ms (cache miss)
+71 silly packumentCache full:https://registry.npmjs.org/worker-f set size:undefined disposed:false
+72 http fetch GET 200 https://registry.npmjs.org/underscore 1492ms (cache miss)
+73 silly packumentCache full:https://registry.npmjs.org/underscore set size:undefined disposed:false
+74 http fetch GET 200 https://registry.npmjs.org/xmlbuilder 2359ms (cache miss)
+75 silly packumentCache full:https://registry.npmjs.org/xmlbuilder set size:undefined disposed:false
+76 http fetch GET https://registry.npmjs.org/jszip attempt 1 failed with ECONNRESET
+77 http fetch GET https://registry.npmjs.org/@xmldom%2fxmldom attempt 1 failed with ECONNRESET
+78 http fetch GET 200 https://registry.npmjs.org/jszip 31675ms attempt #2 (cache miss)
+79 silly packumentCache full:https://registry.npmjs.org/jszip set size:undefined disposed:false
+80 http fetch GET 200 https://registry.npmjs.org/@xmldom%2fxmldom 40814ms attempt #2 (cache miss)
+81 silly packumentCache full:https://registry.npmjs.org/@xmldom%2fxmldom set size:undefined disposed:false
+82 silly fetch manifest base64-js@^1.5.1
+83 silly packumentCache full:https://registry.npmjs.org/base64-js cache-miss
+84 http fetch GET 200 https://registry.npmjs.org/base64-js 230ms (cache miss)
+85 silly packumentCache full:https://registry.npmjs.org/base64-js set size:undefined disposed:false
+86 silly placeDep ROOT @xmldom/xmldom@0.8.15 OK for: mammoth@1.13.0 want: ^0.8.6
+87 silly placeDep node_modules/mammoth argparse@1.0.10 OK for: mammoth@1.13.0 want: ~1.0.3
+88 silly placeDep node_modules/mammoth base64-js@1.5.1 OK for: mammoth@1.13.0 want: ^1.5.1
+89 silly placeDep ROOT dingbat-to-unicode@1.0.2 OK for: mammoth@1.13.0 want: ^1.0.1
+90 silly placeDep ROOT jszip@3.10.2 OK for: mammoth@1.13.0 want: ^3.7.1
+91 silly placeDep ROOT lop@0.4.2 OK for: mammoth@1.13.0 want: ^0.4.2
+92 silly placeDep ROOT underscore@1.13.8 OK for: mammoth@1.13.0 want: ^1.13.1
+93 silly placeDep ROOT xmlbuilder@10.1.1 OK for: mammoth@1.13.0 want: ^10.0.0
+94 silly fetch manifest sprintf-js@~1.0.2
+95 silly packumentCache full:https://registry.npmjs.org/sprintf-js cache-miss
+96 silly fetch manifest lie@~3.3.0
+97 silly packumentCache full:https://registry.npmjs.org/lie cache-miss
+98 silly fetch manifest pako@~1.0.2
+99 silly packumentCache full:https://registry.npmjs.org/pako cache-miss
+100 silly fetch manifest setimmediate@^1.0.5
+101 silly packumentCache full:https://registry.npmjs.org/setimmediate cache-miss
+102 silly fetch manifest readable-stream@~2.3.6
+103 silly packumentCache full:https://registry.npmjs.org/readable-stream cache-miss
+104 silly fetch manifest duck@^0.1.12
+105 silly packumentCache full:https://registry.npmjs.org/duck cache-miss
+106 silly fetch manifest option@~0.2.1
+107 silly packumentCache full:https://registry.npmjs.org/option cache-miss
+108 http fetch GET 200 https://registry.npmjs.org/option 202ms (cache miss)
+109 silly packumentCache full:https://registry.npmjs.org/option set size:undefined disposed:false
+110 http fetch GET 200 https://registry.npmjs.org/sprintf-js 214ms (cache miss)
+111 silly packumentCache full:https://registry.npmjs.org/sprintf-js set size:undefined disposed:false
+112 http fetch GET 200 https://registry.npmjs.org/duck 217ms (cache miss)
+113 silly packumentCache full:https://registry.npmjs.org/duck set size:undefined disposed:false
+114 http fetch GET 200 https://registry.npmjs.org/setimmediate 218ms (cache miss)
+115 silly packumentCache full:https://registry.npmjs.org/setimmediate set size:undefined disposed:false
+116 http fetch GET 200 https://registry.npmjs.org/pako 221ms (cache miss)
+117 silly packumentCache full:https://registry.npmjs.org/pako set size:undefined disposed:false
+118 http fetch GET 200 https://registry.npmjs.org/lie 241ms (cache miss)
+119 silly packumentCache full:https://registry.npmjs.org/lie set size:undefined disposed:false
+120 http fetch GET 200 https://registry.npmjs.org/readable-stream 245ms (cache miss)
+121 silly packumentCache full:https://registry.npmjs.org/readable-stream set size:undefined disposed:false
+122 silly placeDep ROOT lie@3.3.0 OK for: jszip@3.10.2 want: ~3.3.0
+123 silly placeDep node_modules/jszip pako@1.0.11 OK for: jszip@3.10.2 want: ~1.0.2
+124 silly placeDep ROOT readable-stream@2.3.8 OK for: jszip@3.10.2 want: ~2.3.6
+125 silly placeDep ROOT setimmediate@1.0.5 OK for: jszip@3.10.2 want: ^1.0.5
+126 silly fetch manifest immediate@~3.0.5
+127 silly packumentCache full:https://registry.npmjs.org/immediate cache-miss
+128 silly fetch manifest isarray@~1.0.0
+129 silly packumentCache full:https://registry.npmjs.org/isarray cache-miss
+130 silly fetch manifest safe-buffer@~5.1.1
+131 silly packumentCache full:https://registry.npmjs.org/safe-buffer cache-miss
+132 silly fetch manifest core-util-is@~1.0.0
+133 silly packumentCache full:https://registry.npmjs.org/core-util-is cache-miss
+134 silly fetch manifest string_decoder@~1.1.1
+135 silly packumentCache full:https://registry.npmjs.org/string_decoder cache-miss
+136 silly fetch manifest util-deprecate@~1.0.1
+137 silly packumentCache full:https://registry.npmjs.org/util-deprecate cache-miss
+138 silly fetch manifest process-nextick-args@~2.0.0
+139 silly packumentCache full:https://registry.npmjs.org/process-nextick-args cache-miss
+140 http fetch GET 200 https://registry.npmjs.org/isarray 265ms (cache miss)
+141 silly packumentCache full:https://registry.npmjs.org/isarray set size:undefined disposed:false
+142 http fetch GET 200 https://registry.npmjs.org/process-nextick-args 265ms (cache miss)
+143 silly packumentCache full:https://registry.npmjs.org/process-nextick-args set size:undefined disposed:false
+144 http fetch GET 200 https://registry.npmjs.org/util-deprecate 266ms (cache miss)
+145 silly packumentCache full:https://registry.npmjs.org/util-deprecate set size:undefined disposed:false
+146 http fetch GET 200 https://registry.npmjs.org/safe-buffer 268ms (cache miss)
+147 silly packumentCache full:https://registry.npmjs.org/safe-buffer set size:undefined disposed:false
+148 http fetch GET 200 https://registry.npmjs.org/immediate 269ms (cache miss)
+149 silly packumentCache full:https://registry.npmjs.org/immediate set size:undefined disposed:false
+150 http fetch GET 200 https://registry.npmjs.org/string_decoder 270ms (cache miss)
+151 silly packumentCache full:https://registry.npmjs.org/string_decoder set size:undefined disposed:false
+152 http fetch GET 200 https://registry.npmjs.org/core-util-is 553ms (cache miss)
+153 silly packumentCache full:https://registry.npmjs.org/core-util-is set size:undefined disposed:false
+154 silly placeDep ROOT immediate@3.0.6 OK for: lie@3.3.0 want: ~3.0.5
+155 silly placeDep ROOT duck@0.1.12 OK for: lop@0.4.2 want: ^0.1.12
+156 silly placeDep ROOT option@0.2.4 OK for: lop@0.4.2 want: ~0.2.1
+157 silly placeDep node_modules/read-excel-file fflate@0.8.3 OK for: read-excel-file@9.3.10 want: ^0.8.3
+158 silly placeDep ROOT saxen@11.2.0 OK for: read-excel-file@9.3.10 want: ^11.1.0
+159 silly placeDep ROOT unzipper-esm@0.13.3 OK for: read-excel-file@9.3.10 want: ^0.13.3
+160 silly placeDep ROOT worker-f@0.1.20 OK for: read-excel-file@9.3.10 want: ^0.1.12
+161 silly fetch manifest node-int64@^0.4.0
+162 silly packumentCache full:https://registry.npmjs.org/node-int64 cache-miss
+163 http fetch GET 200 https://registry.npmjs.org/node-int64 417ms (cache miss)
+164 silly packumentCache full:https://registry.npmjs.org/node-int64 set size:undefined disposed:false
+165 silly placeDep ROOT core-util-is@1.0.3 OK for: readable-stream@2.3.8 want: ~1.0.0
+166 silly placeDep node_modules/readable-stream isarray@1.0.0 OK for: readable-stream@2.3.8 want: ~1.0.0
+167 silly placeDep ROOT process-nextick-args@2.0.1 OK for: readable-stream@2.3.8 want: ~2.0.0
+168 silly placeDep ROOT safe-buffer@5.1.2 OK for: readable-stream@2.3.8 want: ~5.1.1
+169 silly placeDep ROOT string_decoder@1.1.1 OK for: readable-stream@2.3.8 want: ~1.1.1
+170 silly placeDep ROOT util-deprecate@1.0.2 OK for: readable-stream@2.3.8 want: ~1.0.1
+171 silly placeDep ROOT node-int64@0.4.0 OK for: unzipper-esm@0.13.3 want: ^0.4.0
+172 silly placeDep ROOT sprintf-js@1.0.3 OK for: argparse@1.0.10 want: ~1.0.2
+173 silly reify moves {}
+174 http cache sprintf-js@https://registry.npmjs.org/sprintf-js/-/sprintf-js-1.0.3.tgz 0ms (cache hit)
+175 http cache node-int64@https://registry.npmjs.org/node-int64/-/node-int64-0.4.0.tgz 0ms (cache hit)
+176 http cache process-nextick-args@https://registry.npmjs.org/process-nextick-args/-/process-nextick-args-2.0.1.tgz 0ms (cache hit)
+177 http cache safe-buffer@https://registry.npmjs.org/safe-buffer/-/safe-buffer-5.1.2.tgz 0ms (cache hit)
+178 http cache string_decoder@https://registry.npmjs.org/string_decoder/-/string_decoder-1.1.1.tgz 0ms (cache hit)
+179 http cache util-deprecate@https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz 0ms (cache hit)
+180 http cache core-util-is@https://registry.npmjs.org/core-util-is/-/core-util-is-1.0.3.tgz 0ms (cache hit)
+181 http cache unzipper-esm@https://registry.npmjs.org/unzipper-esm/-/unzipper-esm-0.13.3.tgz 0ms (cache hit)
+182 http cache saxen@https://registry.npmjs.org/saxen/-/saxen-11.2.0.tgz 0ms (cache hit)
+183 http cache worker-f@https://registry.npmjs.org/worker-f/-/worker-f-0.1.20.tgz 0ms (cache hit)
+184 http cache immediate@https://registry.npmjs.org/immediate/-/immediate-3.0.6.tgz 0ms (cache hit)
+185 http cache option@https://registry.npmjs.org/option/-/option-0.2.4.tgz 0ms (cache hit)
+186 http cache duck@https://registry.npmjs.org/duck/-/duck-0.1.12.tgz 0ms (cache hit)
+187 http cache setimmediate@https://registry.npmjs.org/setimmediate/-/setimmediate-1.0.5.tgz 0ms (cache hit)
+188 http cache lie@https://registry.npmjs.org/lie/-/lie-3.3.0.tgz 0ms (cache hit)
+189 http cache readable-stream@https://registry.npmjs.org/readable-stream/-/readable-stream-2.3.8.tgz 0ms (cache hit)
+190 http cache @xmldom/xmldom@https://registry.npmjs.org/@xmldom/xmldom/-/xmldom-0.8.15.tgz 0ms (cache hit)
+191 http cache underscore@https://registry.npmjs.org/underscore/-/underscore-1.13.8.tgz 0ms (cache hit)
+192 http cache lop@https://registry.npmjs.org/lop/-/lop-0.4.2.tgz 0ms (cache hit)
+193 http cache xmlbuilder@https://registry.npmjs.org/xmlbuilder/-/xmlbuilder-10.1.1.tgz 0ms (cache hit)
+194 http cache dingbat-to-unicode@https://registry.npmjs.org/dingbat-to-unicode/-/dingbat-to-unicode-1.0.2.tgz 0ms (cache hit)
+195 http cache unpdf@https://registry.npmjs.org/unpdf/-/unpdf-1.8.1.tgz 0ms (cache hit)
+196 http cache isarray@https://registry.npmjs.org/isarray/-/isarray-1.0.0.tgz 0ms (cache hit)
+197 http cache jszip@https://registry.npmjs.org/jszip/-/jszip-3.10.2.tgz 0ms (cache hit)
+198 http cache mammoth@https://registry.npmjs.org/mammoth/-/mammoth-1.13.0.tgz 0ms (cache hit)
+199 http cache fflate@https://registry.npmjs.org/fflate/-/fflate-0.8.3.tgz 0ms (cache hit)
+200 http cache read-excel-file@https://registry.npmjs.org/read-excel-file/-/read-excel-file-9.3.10.tgz 0ms (cache hit)
+201 silly tarball no local data for sprintf-js@https://registry.npmjs.org/sprintf-js/-/sprintf-js-1.0.3.tgz. Extracting by manifest.
+202 http cache base64-js@https://registry.npmjs.org/base64-js/-/base64-js-1.5.1.tgz 0ms (cache hit)
+203 silly tarball no local data for node-int64@https://registry.npmjs.org/node-int64/-/node-int64-0.4.0.tgz. Extracting by manifest.
+204 http cache pako@https://registry.npmjs.org/pako/-/pako-1.0.11.tgz 0ms (cache hit)
+205 silly tarball no local data for process-nextick-args@https://registry.npmjs.org/process-nextick-args/-/process-nextick-args-2.0.1.tgz. Extracting by manifest.
+206 silly tarball no local data for safe-buffer@https://registry.npmjs.org/safe-buffer/-/safe-buffer-5.1.2.tgz. Extracting by manifest.
+207 silly tarball no local data for string_decoder@https://registry.npmjs.org/string_decoder/-/string_decoder-1.1.1.tgz. Extracting by manifest.
+208 silly tarball no local data for util-deprecate@https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz. Extracting by manifest.
+209 silly tarball no local data for core-util-is@https://registry.npmjs.org/core-util-is/-/core-util-is-1.0.3.tgz. Extracting by manifest.
+210 silly tarball no local data for unzipper-esm@https://registry.npmjs.org/unzipper-esm/-/unzipper-esm-0.13.3.tgz. Extracting by manifest.
+211 silly tarball no local data for saxen@https://registry.npmjs.org/saxen/-/saxen-11.2.0.tgz. Extracting by manifest.
+212 silly tarball no local data for worker-f@https://registry.npmjs.org/worker-f/-/worker-f-0.1.20.tgz. Extracting by manifest.
+213 silly tarball no local data for immediate@https://registry.npmjs.org/immediate/-/immediate-3.0.6.tgz. Extracting by manifest.
+214 silly tarball no local data for option@https://registry.npmjs.org/option/-/option-0.2.4.tgz. Extracting by manifest.
+215 silly tarball no local data for duck@https://registry.npmjs.org/duck/-/duck-0.1.12.tgz. Extracting by manifest.
+216 silly tarball no local data for setimmediate@https://registry.npmjs.org/setimmediate/-/setimmediate-1.0.5.tgz. Extracting by manifest.
+217 silly tarball no local data for lie@https://registry.npmjs.org/lie/-/lie-3.3.0.tgz. Extracting by manifest.
+218 silly tarball no local data for readable-stream@https://registry.npmjs.org/readable-stream/-/readable-stream-2.3.8.tgz. Extracting by manifest.
+219 silly tarball no local data for @xmldom/xmldom@https://registry.npmjs.org/@xmldom/xmldom/-/xmldom-0.8.15.tgz. Extracting by manifest.
+220 silly tarball no local data for underscore@https://registry.npmjs.org/underscore/-/underscore-1.13.8.tgz. Extracting by manifest.
+221 silly tarball no local data for lop@https://registry.npmjs.org/lop/-/lop-0.4.2.tgz. Extracting by manifest.
+222 silly tarball no local data for xmlbuilder@https://registry.npmjs.org/xmlbuilder/-/xmlbuilder-10.1.1.tgz. Extracting by manifest.
+223 silly tarball no local data for dingbat-to-unicode@https://registry.npmjs.org/dingbat-to-unicode/-/dingbat-to-unicode-1.0.2.tgz. Extracting by manifest.
+224 silly tarball no local data for unpdf@https://registry.npmjs.org/unpdf/-/unpdf-1.8.1.tgz. Extracting by manifest.
+225 silly tarball no local data for isarray@https://registry.npmjs.org/isarray/-/isarray-1.0.0.tgz. Extracting by manifest.
+226 silly tarball no local data for jszip@https://registry.npmjs.org/jszip/-/jszip-3.10.2.tgz. Extracting by manifest.
+227 silly tarball no local data for mammoth@https://registry.npmjs.org/mammoth/-/mammoth-1.13.0.tgz. Extracting by manifest.
+228 silly tarball no local data for fflate@https://registry.npmjs.org/fflate/-/fflate-0.8.3.tgz. Extracting by manifest.
+229 http cache argparse@https://registry.npmjs.org/argparse/-/argparse-1.0.10.tgz 0ms (cache hit)
+230 silly tarball no local data for read-excel-file@https://registry.npmjs.org/read-excel-file/-/read-excel-file-9.3.10.tgz. Extracting by manifest.
+231 silly tarball no local data for base64-js@https://registry.npmjs.org/base64-js/-/base64-js-1.5.1.tgz. Extracting by manifest.
+232 silly tarball no local data for pako@https://registry.npmjs.org/pako/-/pako-1.0.11.tgz. Extracting by manifest.
+233 silly tarball no local data for argparse@https://registry.npmjs.org/argparse/-/argparse-1.0.10.tgz. Extracting by manifest.
+234 http fetch GET 200 https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz 225ms (cache miss)
+235 http fetch GET 200 https://registry.npmjs.org/core-util-is/-/core-util-is-1.0.3.tgz 227ms (cache miss)
+236 http fetch GET 200 https://registry.npmjs.org/process-nextick-args/-/process-nextick-args-2.0.1.tgz 231ms (cache miss)
+237 http fetch GET 200 https://registry.npmjs.org/node-int64/-/node-int64-0.4.0.tgz 233ms (cache miss)
+238 http fetch GET 200 https://registry.npmjs.org/safe-buffer/-/safe-buffer-5.1.2.tgz 234ms (cache miss)
+239 http fetch GET 200 https://registry.npmjs.org/string_decoder/-/string_decoder-1.1.1.tgz 235ms (cache miss)
+240 http fetch GET 200 https://registry.npmjs.org/sprintf-js/-/sprintf-js-1.0.3.tgz 245ms (cache miss)
+241 http fetch GET 200 https://registry.npmjs.org/saxen/-/saxen-11.2.0.tgz 279ms (cache miss)
+242 http fetch GET 200 https://registry.npmjs.org/unzipper-esm/-/unzipper-esm-0.13.3.tgz 473ms (cache miss)
+243 http fetch GET 200 https://registry.npmjs.org/isarray/-/isarray-1.0.0.tgz 485ms (cache miss)
+244 http fetch GET 200 https://registry.npmjs.org/setimmediate/-/setimmediate-1.0.5.tgz 839ms (cache miss)
+245 http fetch GET 200 https://registry.npmjs.org/option/-/option-0.2.4.tgz 842ms (cache miss)
+246 http fetch GET 200 https://registry.npmjs.org/immediate/-/immediate-3.0.6.tgz 850ms (cache miss)
+247 http fetch GET 200 https://registry.npmjs.org/@xmldom/xmldom/-/xmldom-0.8.15.tgz 850ms (cache miss)
+248 http fetch GET 200 https://registry.npmjs.org/duck/-/duck-0.1.12.tgz 857ms (cache miss)
+249 http fetch GET 200 https://registry.npmjs.org/lie/-/lie-3.3.0.tgz 859ms (cache miss)
+250 http fetch GET 200 https://registry.npmjs.org/jszip/-/jszip-3.10.2.tgz 900ms (cache miss)
+251 http fetch GET 200 https://registry.npmjs.org/xmlbuilder/-/xmlbuilder-10.1.1.tgz 1005ms (cache miss)
+252 http fetch GET 200 https://registry.npmjs.org/base64-js/-/base64-js-1.5.1.tgz 1039ms (cache miss)
+253 http fetch GET 200 https://registry.npmjs.org/argparse/-/argparse-1.0.10.tgz 1071ms (cache miss)
+254 http fetch GET 200 https://registry.npmjs.org/worker-f/-/worker-f-0.1.20.tgz 1097ms (cache miss)
+255 http fetch GET 200 https://registry.npmjs.org/underscore/-/underscore-1.13.8.tgz 1224ms (cache miss)
+256 http fetch GET 200 https://registry.npmjs.org/fflate/-/fflate-0.8.3.tgz 1316ms (cache miss)
+257 http fetch GET 200 https://registry.npmjs.org/pako/-/pako-1.0.11.tgz 1437ms (cache miss)
+258 http fetch GET 200 https://registry.npmjs.org/lop/-/lop-0.4.2.tgz 1446ms (cache miss)
+259 http fetch GET 200 https://registry.npmjs.org/mammoth/-/mammoth-1.13.0.tgz 1521ms (cache miss)
+260 http fetch GET 200 https://registry.npmjs.org/dingbat-to-unicode/-/dingbat-to-unicode-1.0.2.tgz 1677ms (cache miss)
+261 http fetch GET 200 https://registry.npmjs.org/read-excel-file/-/read-excel-file-9.3.10.tgz 1874ms (cache miss)
+262 http fetch GET 200 https://registry.npmjs.org/readable-stream/-/readable-stream-2.3.8.tgz 1888ms (cache miss)
+263 http fetch GET 200 https://registry.npmjs.org/unpdf/-/unpdf-1.8.1.tgz 1901ms (cache miss)
+264 silly ADD node_modules/sprintf-js
+265 silly ADD node_modules/node-int64
+266 silly ADD node_modules/util-deprecate
+267 silly ADD node_modules/string_decoder
+268 silly ADD node_modules/safe-buffer
+269 silly ADD node_modules/process-nextick-args
+270 silly ADD node_modules/core-util-is
+271 silly ADD node_modules/worker-f
+272 silly ADD node_modules/unzipper-esm
+273 silly ADD node_modules/saxen
+274 silly ADD node_modules/option
+275 silly ADD node_modules/duck
+276 silly ADD node_modules/immediate
+277 silly ADD node_modules/setimmediate
+278 silly ADD node_modules/readable-stream
+279 silly ADD node_modules/readable-stream/node_modules/isarray
+280 silly ADD node_modules/lie
+281 silly ADD node_modules/xmlbuilder
+282 silly ADD node_modules/underscore
+283 silly ADD node_modules/lop
+284 silly ADD node_modules/jszip
+285 silly ADD node_modules/jszip/node_modules/pako
+286 silly ADD node_modules/dingbat-to-unicode
+287 silly ADD node_modules/@xmldom/xmldom
+288 silly ADD node_modules/unpdf
+289 silly ADD node_modules/read-excel-file
+290 silly ADD node_modules/read-excel-file/node_modules/fflate
+291 silly ADD node_modules/mammoth
+292 silly ADD node_modules/mammoth/node_modules/base64-js
+293 silly ADD node_modules/mammoth/node_modules/argparse
+294 warn install-scripts 6 packages have install scripts not yet covered by allowScripts:
+294 warn install-scripts   esbuild@0.18.20 (postinstall: node install.js)
+294 warn install-scripts   esbuild@0.25.12 (postinstall: node install.js)
+294 warn install-scripts   esbuild@0.28.0 (postinstall: node install.js)
+294 warn install-scripts   unrs-resolver@1.11.1 (postinstall: napi-postinstall unrs-resolver 1.11.1 check)
+294 warn install-scripts   workerd@1.20260515.1 (postinstall: node install.js)
+294 warn install-scripts   esbuild@0.27.3 (postinstall: node install.js)
+294 warn install-scripts
+294 warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+295 verbose cwd D:\agent\2026-10-02\chatgpt-conversation-6abf5153-35bc-83ea-97ff-3\work\europe-travel-copy
+296 verbose os Windows_NT 10.0.26200
+297 verbose node v24.21.0
+298 verbose npm  v11.19.0
+299 verbose exit 0
+300 info ok
