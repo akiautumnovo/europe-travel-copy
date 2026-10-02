@@ -1,0 +1,2 @@
+import { env } from "cloudflare:workers";import type { MediaProvider } from "./provider";import { PexelsProvider } from "./pexels";
+export function getMediaProvider():MediaProvider|null{const config=env as unknown as Record<string,string|undefined>;if(!config.PEXELS_API_KEY)return null;if((config.MEDIA_PROVIDER||"pexels")!=="pexels")throw new Error("不支持的图片 Provider");return new PexelsProvider({apiKey:config.PEXELS_API_KEY,baseUrl:config.PEXELS_BASE_URL||"https://api.pexels.com"})}

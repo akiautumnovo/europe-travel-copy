@@ -60,3 +60,5 @@ export type RevisionInput = GenerationContext & { blocks:DraftBlock[]; lockedBlo
 export const inspirationDraftSchema=z.object({topics:z.array(z.object({title:z.string().min(4).refine(value=>(value.match(/[\u4e00-\u9fff]/g)||[]).length>=4,"标题必须为中文"),country:z.string().min(1),flag:z.string().min(1),reason:z.string().min(4),audience:z.string().min(2),content_type:z.string().min(2),source_index:z.number().int().min(0).nullable()})).length(4)});
 export type InspirationDraft=z.infer<typeof inspirationDraftSchema>;
 export type InspirationGenerationInput={sourceSummaries:Array<{title:string;content:string;institution:string}>;previousTitles:string[];recentCountries:string[];productName?:string;refreshNo:number};
+export const storyboardSchema=z.object({roles:z.array(z.object({id:z.string(),label:z.string(),description:z.string(),searchTheme:z.string()})).min(4).max(9),searchThemes:z.array(z.object({label:z.string(),query:z.string()})).min(4).max(6)});
+export type Storyboard=z.infer<typeof storyboardSchema>;

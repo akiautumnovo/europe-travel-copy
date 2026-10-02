@@ -1,4 +1,4 @@
-import { analysisResultSchema, draftSchema, inspirationDraftSchema, strategiesSchema, verificationSchema, type AnalysisInput, type AnalysisResult, type Draft, type GenerationContext, type InspirationDraft, type InspirationGenerationInput, type RevisionInput, type Strategy, type Verification } from "./types";
+import { analysisResultSchema, draftSchema, inspirationDraftSchema, storyboardSchema, strategiesSchema, verificationSchema, type AnalysisInput, type AnalysisResult, type Draft, type GenerationContext, type InspirationDraft, type InspirationGenerationInput, type RevisionInput, type Storyboard, type Strategy, type Verification } from "./types";
 import type { AIProvider } from "./provider";
 
 type DeepSeekConfig = { apiKey: string; baseUrl: string; model: string };
@@ -53,6 +53,7 @@ ${revisionRule}
 近期国家：${JSON.stringify(input.recentCountries)}
 搜索素材：${JSON.stringify(input.sourceSummaries)}`,inspirationDraftSchema);
   }
+  async generateStoryboard(text:string):Promise<Storyboard>{return this.callJson(`根据朋友圈文案设计简单视觉故事板。只返回 JSON：{"roles":[{"id":"hero","label":"首图","description":"画面作用","searchTheme":"对应中文主题"}],"searchThemes":[{"label":"中文主题","query":"concise English Pexels query"}]}。要求 6-9 个叙事角色，但只归并为 4-6 个搜索主题；角色必须有首图、大景、生活/人物环境、细节和收尾等不同作用，禁止同一地名重复九次；query 只描述真实摄影内容，不生成AI图片。文案：${text.slice(0,5000)}`,storyboardSchema)}
 
   private async callJson<T>(prompt:string, schema:{parse:(value:unknown)=>T}):Promise<T>{
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30_000);

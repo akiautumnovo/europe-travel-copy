@@ -15,6 +15,13 @@
       "when": 1790941200000,
       "tag": "0001_phase4_fact_cache_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790946000000,
+      "tag": "0002_phase5_asset_hash",
+      "breakpoints": true
     }
   ]
 }
