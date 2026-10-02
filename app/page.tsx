@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, BookOpenText, Check, ChevronRight, Clock3, Copy, FileUp, Image as ImageIcon, Layers3, Lightbulb, LogOut, MessageCircleMore, Package, PenLine, Plus, RefreshCw, Send, Sparkles, Trash2, Upload, UserRound, WandSparkles } from "lucide-react";
+import { ArrowLeft, BookOpenText, Check, ChevronRight, Clock3, Copy, ExternalLink, FileUp, Image as ImageIcon, Layers3, Lightbulb, LogOut, MessageCircleMore, Package, PenLine, Plus, RefreshCw, Send, ShieldCheck, Sparkles, Trash2, Upload, UserRound, WandSparkles, X } from "lucide-react";
 import AnalysisWorkspace from "./analysis-workspace";
 import CreationWorkspace from "./creation-workspace";
 
@@ -12,13 +12,6 @@ const navItems: { id: MainView; label: string; icon: typeof Lightbulb }[] = [
   { id: "inspiration", label: "灵感", icon: Lightbulb }, { id: "products", label: "产品", icon: Package },
   { id: "assets", label: "素材", icon: ImageIcon }, { id: "style", label: "风格", icon: UserRound },
   { id: "history", label: "历史", icon: Clock3 },
-];
-
-const topics = [
-  { flag: "🇨🇭", place: "瑞士", title: "第一次去瑞士，为什么不要每天换酒店", reason: "实用建议容易引发收藏，也能自然体现你的行程经验。", type: "专业建议", tone: "ice" },
-  { flag: "🇮🇹", place: "托斯卡纳", title: "为什么慢旅行更适合这里", reason: "今天适合发轻松一点的生活方式内容。", type: "生活方式", tone: "sun" },
-  { flag: "🇫🇷", place: "巴黎", title: "第一次去巴黎，为什么不要把每天排满", reason: "把熟悉的目的地换成更松弛、更真实的角度。", type: "旅行观点", tone: "rose" },
-  { flag: "🇪🇸", place: "西班牙", title: "当地晚餐时间会怎样影响旅行安排", reason: "具体又有趣，适合开启一段轻知识分享。", type: "当地文化", tone: "amber" },
 ];
 
 const directions = [
@@ -45,7 +38,7 @@ export default function Home() {
       <button className="brand" onClick={() => setView("inspiration")} aria-label="返回今日灵感"><span className="brand-mark">旅</span><span><strong>旅笺</strong><small>朋友圈内容助手</small></span></button>
       <nav aria-label="主导航">{navItems.map((item) => { const Icon = item.icon; const longLabel = item.label === "灵感" ? "今日灵感" : item.label === "风格" ? "我的风格" : item.label === "历史" ? "内容历史" : item.label; return <button key={item.id} className={activeMain === item.id ? "nav-item active" : "nav-item"} onClick={() => setView(item.id)}><Icon size={19}/><span>{longLabel}</span></button>; })}</nav>
       <div className="account-card"><span className="account-avatar">A</span><div><strong>Aki</strong><small>数据已安全保存</small></div><a href="/signout-with-chatgpt?return_to=/" title="退出登录"><LogOut size={17}/></a></div>
-      <div className="phase-note"><span>Phase 3</span><p>三方向 · 段落编辑 · 版本</p></div>
+      <div className="phase-note"><span>Phase 4</span><p>每日灵感 · 搜索 · 事实核验</p></div>
     </aside>
     <main className={view === "editor" ? "main-content editor-main" : "main-content"}>
       {view === "inspiration" && <Inspiration onGenerate={(topic) => {setCreationTopic(topic);setResumeContentId("");setView("creation")}} onAnalyze={(value)=>{setAnalysisText(value);setView("analysis")}} onMock={flash}/>} {view === "products" && <Products onMock={flash}/>} {view === "assets" && <Assets onMock={flash}/>} {view === "style" && <Style/>} {view === "history" && <History onOpen={(id)=>{setResumeContentId(id);setCreationTopic("");setView("creation")}}/>}
@@ -62,11 +55,18 @@ export default function Home() {
 function PageHeader({ kicker, title, action }: { kicker: string; title: string; action?: React.ReactNode }) { return <header className="page-header"><div><p className="kicker">{kicker}</p><h1>{title}</h1></div>{action}</header>; }
 
 function Inspiration({ onGenerate, onAnalyze, onMock }: { onGenerate: (topic:string) => void; onAnalyze:(text:string)=>void; onMock: (s: string) => void }) {
-  const [quickText,setQuickText]=useState("");
-  return <div className="page-wrap inspiration-page"><PageHeader kicker="10月2日 · 星期五" title="今天发什么？" action={<button className="icon-action" onClick={() => onMock("已换一组模拟选题")}><RefreshCw size={17}/>换一组</button>}/>
-    <section className="recommendation-reason"><div className="reason-icon"><Sparkles size={20}/></div><div><p>今天为什么这样推荐</p><h2>今天建议轻一点。最近几条都是产品内容，今天更适合发一篇欧洲生活方式内容。</h2></div></section>
-    <section className="section-block"><div className="section-heading"><div><span>今日推荐</span><h2>4 个值得写的角度</h2></div><small>推荐选题</small></div><div className="topic-grid">{topics.map((topic,i) => <article className={`topic-card ${topic.tone}`} key={topic.place}><div className="topic-art"><span className="big-flag">{topic.flag}</span><span className="place-label">{topic.place}</span><span className="card-index">0{i+1}</span></div><div className="topic-body"><span className="tag">{topic.type}</span><h3>{topic.title}</h3><p>{topic.reason}</p><div className="card-actions"><button className="primary-button" onClick={()=>onGenerate(topic.title)}><WandSparkles size={17}/>生成朋友圈</button><button className="text-button" onClick={() => onMock("已切换到另一个推荐角度")}>换个角度</button></div></div></article>)}</div></section>
+  type Source={title:string;url:string;domain:string;tier?:number;publishedDate?:string};
+  type Topic={id:string;flag:string;country:string;title:string;reason:string;audience:string;contentType:string;productRelated:boolean;verification:"verified"|"pending"|"evergreen";sources?:Source[]};
+  const [quickText,setQuickText]=useState(""),[topics,setTopics]=useState<Topic[]>([]),[reason,setReason]=useState("正在结合季节、产品和近期内容准备推荐…"),[loading,setLoading]=useState(true),[sheet,setSheet]=useState<Topic|null>(null);
+  const load=async(refresh=false)=>{setLoading(true);try{const r=await fetch(refresh?"/api/inspiration/refresh":"/api/inspiration/today",{method:refresh?"POST":"GET"});const data=await r.json() as {topics?:Topic[];recommendationReason?:string};if(!r.ok||!data.topics)throw new Error();setTopics(data.topics);setReason(data.recommendationReason||"");if(refresh)onMock("已换一组推荐") }catch{onMock("今日推荐暂时无法读取")}finally{setLoading(false)}};
+  useEffect(()=>{void load()},[]);
+  const date=new Intl.DateTimeFormat("zh-CN",{month:"long",day:"numeric",weekday:"long"}).format(new Date());
+  const tones=["ice","sun","rose","amber"];
+  return <div className="page-wrap inspiration-page"><PageHeader kicker={date} title="今天发什么？" action={<button className="icon-action" disabled={loading} onClick={() => void load(true)}><RefreshCw className={loading?"spin":""} size={17}/>换一组</button>}/>
+    <section className="recommendation-reason"><div className="reason-icon"><Sparkles size={20}/></div><div><p>今天为什么这样推荐</p><h2>{reason}</h2></div></section>
+    <section className="section-block"><div className="section-heading"><div><span>今日推荐</span><h2>4 个值得写的角度</h2></div><small>{loading?"准备中":"已按近期内容去重"}</small></div><div className="topic-grid">{topics.map((topic,i) => <article className={`topic-card ${tones[i%4]}`} key={topic.id}><div className="topic-art"><span className="big-flag">{topic.flag}</span><span className="place-label">{topic.country}</span><span className="card-index">0{i+1}</span></div><div className="topic-body"><div className="topic-meta"><span className="tag">{topic.contentType}</span><button className={`verification-badge ${topic.verification}`} onClick={()=>setSheet(topic)}><ShieldCheck size={14}/>{topic.verification==="verified"?"已核验":topic.verification==="pending"?"等待联网核验":"常青内容"}</button></div><h3>{topic.title}</h3><p>{topic.reason}</p><p className="topic-audience">适合：{topic.audience}{topic.productRelated?" · 与主推产品相关":""}</p><div className="card-actions"><button className="primary-button" onClick={()=>onGenerate(topic.title)}><WandSparkles size={17}/>生成朋友圈</button></div></div></article>)}</div></section>
     <section className="quick-start"><div><span className="mini-label">AI 输入理解</span><h2>已经有内容？先识别事实</h2><p>粘贴产品资料或同事朋友圈，确认事实后再用于创作。</p></div><div className="quick-input"><textarea value={quickText} onChange={e=>setQuickText(e.target.value)} aria-label="粘贴待解析内容" placeholder="粘贴产品、同事朋友圈或参考内容…"/><button onClick={()=>onAnalyze(quickText)} aria-label="开始解析"><Send size={19}/></button></div></section>
+    {sheet&&<div className="sheet-backdrop" onClick={()=>setSheet(null)}><section className="source-sheet" onClick={e=>e.stopPropagation()}><div className="sheet-handle"/><header><div><span className="mini-label">事实来源</span><h2>{sheet.title}</h2></div><button onClick={()=>setSheet(null)} aria-label="关闭"><X size={20}/></button></header>{sheet.verification==="verified"&&sheet.sources?.length?<div className="source-list">{sheet.sources.map((s,i)=><a href={s.url} target="_blank" rel="noreferrer" key={`${s.url}-${i}`}><span><strong>{s.title}</strong><small>{s.domain} · {s.tier===1?"一手来源":"参考来源"}{s.publishedDate?` · ${s.publishedDate}`:""}</small></span><ExternalLink size={16}/></a>)}</div>:<div className="source-empty"><ShieldCheck size={22}/><p>{sheet.verification==="pending"?"当前未配置联网搜索，涉及最新信息时请先人工确认。":"这是稳定的体验或文化主题，默认无需实时联网。"}</p></div>}</section></div>}
   </div>;
 }
 

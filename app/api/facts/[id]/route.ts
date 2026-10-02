@@ -1,0 +1,2 @@
+import { db,json,requireApiUser } from "../../_shared";export async function GET(_request:Request,{params}:{params:Promise<{id:string}>}){const user=await requireApiUser(),{id}=await params;const row=await db().prepare("SELECT id,claim,sources,verification_level as verificationLevel,status,verified_at as verifiedAt,expires_at as expiresAt FROM fact_cache WHERE id=? AND user_id=?").bind(id,user.userId).first();if(!row)return json({error:"核验记录不存在"},{status:404});return json({...row,sources:JSON.parse(String(row.sources))})}
+
