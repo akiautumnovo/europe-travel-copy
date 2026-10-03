@@ -21,5 +21,5 @@ export async function POST(request:Request){
     await db().prepare("INSERT INTO contents (id,user_id,product_id,topic_title,topic_meta,source_input,sales_intensity,status,product_snapshot,fingerprint,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,user.userId,body.productId||null,topic,JSON.stringify({strategies}),topic,intensity,"draft",JSON.stringify(productSnapshot),JSON.stringify(fingerprint),now,now).run();
     await db().batch(candidates.map((candidate,index)=>db().prepare("INSERT INTO content_versions (id,content_id,user_id,version_no,strategy_type,text_content,blocks,locked_block_ids,change_type,change_instruction,is_adopted,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,0,?)").bind(crypto.randomUUID(),id,user.userId,index+1,candidate.strategy.type,blocksToText(candidate.draft.blocks),JSON.stringify(candidate.draft.blocks),"[]","initial",candidate.strategy.approach,now)));
     return json({contentId:id,topic,salesIntensity:intensity,latestVersionNo:3,candidates:candidates.map((c,index)=>({...c,versionNo:index+1}))},{status:201});
-  }catch(error){return json({error:error instanceof Error?error.message:"生成失败，请重试"},{status:422})}
+  }catch(error){const message=error instanceof Error&&error.message.startsWith("事实检查未通过")?error.message:"文案生成暂时失败，请重试。你当前已确认的产品资料不会丢失。";return json({error:message},{status:422})}
 }

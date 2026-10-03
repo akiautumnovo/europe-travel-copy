@@ -35,7 +35,7 @@ export default function AnalysisWorkspace({ initialText, onBack, notify }:{ init
   }
   return <div className="page-wrap analysis-page">
     <button className="back-button" onClick={onBack}><ArrowLeft size={18}/>返回今日灵感</button>
-    <header className="analysis-header"><div><p className="kicker">Phase 2 · AI 输入理解</p><h1>先分清事实，再开始创作</h1><p>AI 只整理原文，不会替你补全日期、酒店等级或剩余名额。</p></div><span className="analysis-badge"><Sparkles size={17}/>DeepSeek 解析</span></header>
+    <header className="analysis-header"><div><p className="kicker">产品事实确认</p><h1>先分清事实，再开始创作</h1><p>AI 只整理原文，不会替你补全日期、酒店等级或剩余名额。</p></div><span className="analysis-badge"><Sparkles size={17}/>DeepSeek 解析</span></header>
     <section className="analysis-input-card">
       <div className="mode-tabs">{([['official_product','正式产品资料'],['colleague_post','同事朋友圈'],['reference','普通参考内容']] as const).map(([value,label])=><button key={value} className={type===value?"active":""} onClick={()=>setType(value)}>{label}</button>)}</div>
       <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="粘贴行程、报价、同事朋友圈或参考内容…" aria-label="待解析内容"/>

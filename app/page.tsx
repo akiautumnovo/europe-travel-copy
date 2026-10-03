@@ -40,7 +40,7 @@ export default function Home() {
       <button className="brand" onClick={() => setView("inspiration")} aria-label="返回今日灵感"><span className="brand-mark">旅</span><span><strong>旅笺</strong><small>朋友圈内容助手</small></span></button>
       <nav aria-label="主导航">{navItems.map((item) => { const Icon = item.icon; const longLabel = item.label === "灵感" ? "今日灵感" : item.label === "风格" ? "我的风格" : item.label === "历史" ? "内容历史" : item.label; return <button key={item.id} className={activeMain === item.id ? "nav-item active" : "nav-item"} onClick={() => setView(item.id)}><Icon size={19}/><span>{longLabel}</span></button>; })}</nav>
       <div className="account-card"><span className="account-avatar">A</span><div><strong>Aki</strong><small>数据已安全保存</small></div><a href="/signout-with-chatgpt?return_to=/" title="退出登录"><LogOut size={17}/></a></div>
-      <div className="phase-note"><span>Phase 6</span><p>Style DNA · 渐进学习</p></div>
+      <div className="phase-note"><span>MVP</span><p>完整创作闭环</p></div>
     </aside>
     <main className={view === "editor" ? "main-content editor-main" : "main-content"}>
       {view === "inspiration" && <Inspiration onGenerate={(topic) => {setCreationTopic(topic);setResumeContentId("");setView("creation")}} onAnalyze={(value)=>{setAnalysisText(value);setView("analysis")}} onMock={flash}/>} {view === "products" && <Products onMock={flash}/>} {view === "assets" && <AssetLibrary notify={flash}/>} {view === "style" && <StyleDNA notify={flash}/>} {view === "history" && <History onOpen={(id)=>{setResumeContentId(id);setCreationTopic("");setView("creation")}}/>}
