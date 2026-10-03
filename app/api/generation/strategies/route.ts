@@ -10,12 +10,12 @@ function unsupportedSensitiveClaims(text:string,facts:GenerationContext["facts"]
  const rules=[
   {label:"价格",field:/价格|费用|团费/,pattern:/(?:¥|￥|€|\$)\s?\d[\d,.]*|\d[\d,.]*\s?(?:元|欧元|人民币)/gi},
   {label:"日期",field:/日期|出发|时间/,pattern:/\d{4}[年/-]\d{1,2}(?:[月/-]\d{1,2}日?)?|\d{1,2}月\d{1,2}日/gi},
-  {label:"行程天数",field:/天数|行程|时长/,pattern:/\d+\s?(?:天|晚)/gi},
+  {label:"行程天数",field:/天数|行程|时长/,pattern:/(?:全程|整个行程|行程(?:共|总计|合计)?|共计|总共|为期)\s*\d+\s?(?:天|日)(?:\s*\d+\s?晚)?/gi},
   {label:"酒店等级",field:/酒店|住宿|星级/,pattern:/(?:[四五六]|[4-6])星(?:级)?酒店/gi},
   {label:"剩余名额",field:/名额|席位|余位/,pattern:/(?:仅剩|剩余|余)\s*\d+\s?(?:席|位|个名额)/gi},
   {label:"航班",field:/航班|航线/,pattern:/\b[A-Z]{2}\s?\d{3,4}\b/g},
  ];
- return rules.flatMap(rule=>(text.match(rule.pattern)||[]).filter(claim=>{const claimDigits=digits(claim);return !facts.some(f=>rule.field.test(f.field)&&claimDigits.every(n=>digits(f.value).includes(n)))}).map(claim=>`${rule.label}“${claim}”没有对应的已确认事实`));
+ return [...new Set(rules.flatMap(rule=>(text.match(rule.pattern)||[]).filter(claim=>{const claimDigits=digits(claim);return !facts.some(f=>rule.field.test(f.field)&&claimDigits.every(n=>digits(f.value).includes(n)))}).map(claim=>`${rule.label}“${claim}”没有对应的已确认事实`)))];
 }
 
 export async function POST(request:Request){
