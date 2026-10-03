@@ -38,3 +38,13 @@ html,body{max-width:100%;overflow-x:hidden}.mobile-editor-bar{display:none}.sele
  .source-sheet{max-height:88dvh}.page-wrap{max-width:100%}.fact-fields input,.creation-setup input,.creation-setup select{font-size:16px}
 }
 @media(max-width:390px){.picker-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.block-controls{grid-column:1/-1}.text-block{grid-template-columns:26px minmax(0,1fr)}}
+
+/* Content history actions */
+.history-row{display:flex;grid-template-columns:none;align-items:center;gap:0;padding:0;overflow:hidden}
+.history-open{display:grid;grid-template-columns:60px minmax(0,1fr) auto;align-items:center;gap:18px;flex:1;min-width:0;padding:21px;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.history-open:hover{background:#f8fbfa}
+.history-copy{min-width:0}
+.history-copy h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.history-delete{flex:0 0 auto;margin-right:18px}
+.history-delete:disabled{cursor:wait;opacity:.6}
+@media(max-width:700px){.history-open{grid-template-columns:36px minmax(0,1fr);gap:10px;padding:17px 10px 17px 16px}.history-open .history-status{grid-column:2;justify-self:start}.history-delete{margin-right:12px}}
