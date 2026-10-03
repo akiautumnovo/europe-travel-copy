@@ -62,3 +62,5 @@ export type InspirationDraft=z.infer<typeof inspirationDraftSchema>;
 export type InspirationGenerationInput={sourceSummaries:Array<{title:string;content:string;institution:string}>;previousTitles:string[];recentCountries:string[];productName?:string;refreshNo:number};
 export const storyboardSchema=z.object({roles:z.array(z.object({id:z.string(),label:z.string(),description:z.string(),searchTheme:z.string()})).min(4).max(9),searchThemes:z.array(z.object({label:z.string(),query:z.string()})).min(4).max(6)});
 export type Storyboard=z.infer<typeof storyboardSchema>;
+export const styleSignalsSchema=z.object({signals:z.array(z.object({label:z.string().min(2),flexible:z.boolean(),evidence:z.string().min(2)})).max(6),summary:z.object({length_change:z.string(),cta_change:z.string(),emoji_change:z.string(),opening_change:z.string(),professional_change:z.string()})});
+export type StyleSignals=z.infer<typeof styleSignalsSchema>;
