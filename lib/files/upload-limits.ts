@@ -1,0 +1,3 @@
+export const PRODUCT_FILE_MAX_MB = 25;
+export const PRODUCT_FILE_MAX_BYTES = PRODUCT_FILE_MAX_MB * 1024 * 1024;
+

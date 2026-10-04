@@ -1,6 +1,7 @@
 import { getAIProvider } from "../../../lib/ai";
 import { inputTypeSchema } from "../../../lib/ai/types";
 import { extractTextFromFile } from "../../../lib/files/extract-text";
+import { PRODUCT_FILE_MAX_BYTES, PRODUCT_FILE_MAX_MB } from "../../../lib/files/upload-limits";
 import { json, requireApiUser } from "../_shared";
 
 export async function POST(request: Request) {
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
       type = form.get("type");
       const file = form.get("file");
       if (!(file instanceof File) || !file.size) return json({ error: "请选择文件" }, { status: 400 });
-      if (file.size > 15 * 1024 * 1024) return json({ error: "文件不能超过 15MB" }, { status: 400 });
+      if (file.size > PRODUCT_FILE_MAX_BYTES) return json({ error: `文件不能超过 ${PRODUCT_FILE_MAX_MB}MB` }, { status: 400 });
       sourceName = file.name;
       text = await extractTextFromFile(file);
     } else {

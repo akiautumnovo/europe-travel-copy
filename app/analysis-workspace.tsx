@@ -63,7 +63,7 @@ export default function AnalysisWorkspace({ initialText, onBack, onContinue, not
     <section className="analysis-input-card">
       <div className="mode-tabs">{([['official_product','正式产品资料'],['colleague_post','同事朋友圈'],['reference','普通参考内容']] as const).map(([value,label])=><button key={value} className={type===value?"active":""} onClick={()=>setType(value)}>{label}</button>)}</div>
       <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="粘贴行程、报价、同事朋友圈或参考内容…" aria-label="待解析内容"/>
-      <div className="analysis-actions"><button className="secondary-button" onClick={()=>fileRef.current?.click()}><FileUp size={17}/>上传并解析</button><input ref={fileRef} hidden type="file" accept=".txt,.pdf,.docx,.xlsx" onChange={e=>e.target.files?.[0]&&analyze(e.target.files[0])}/><button className="primary-button" disabled={busy||(!text.trim())} onClick={()=>analyze()}>{busy?<><LoaderCircle className="spin" size={17}/>正在识别</>:<><Sparkles size={17}/>开始解析</>}</button></div>
+      <div className="analysis-actions"><button className="secondary-button" title="最大支持 25MB" onClick={()=>fileRef.current?.click()}><FileUp size={17}/>上传并解析</button><input ref={fileRef} hidden type="file" accept=".txt,.pdf,.docx,.xlsx" onChange={e=>e.target.files?.[0]&&analyze(e.target.files[0])}/><button className="primary-button" disabled={busy||(!text.trim())} onClick={()=>analyze()}>{busy?<><LoaderCircle className="spin" size={17}/>正在识别</>:<><Sparkles size={17}/>开始解析</>}</button></div>
       {error&&<p className="analysis-error" role="alert">{error}</p>}
     </section>
     {result&&<section className="analysis-results">

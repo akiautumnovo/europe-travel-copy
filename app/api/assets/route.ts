@@ -1,4 +1,5 @@
 import { bucket, db, json, requireApiUser } from "../_shared";
+import { PRODUCT_FILE_MAX_BYTES, PRODUCT_FILE_MAX_MB } from "../../../lib/files/upload-limits";
 import { resolveFolderId } from "./folders/store";
 
 type AssetRow = {
@@ -91,7 +92,9 @@ export async function POST(request: Request) {
   const file = form.get("file");
   const kind = form.get("kind") === "source" ? "source-file" : "user-asset";
   if (!(file instanceof File) || file.size === 0) return json({ error: "请选择文件" }, { status: 400 });
-  if (file.size > 15 * 1024 * 1024) return json({ error: "文件不能超过 15MB" }, { status: 400 });
+  const maxBytes = kind === "source-file" ? PRODUCT_FILE_MAX_BYTES : 15 * 1024 * 1024;
+  const maxMb = kind === "source-file" ? PRODUCT_FILE_MAX_MB : 15;
+  if (file.size > maxBytes) return json({ error: `文件不能超过 ${maxMb}MB` }, { status: 400 });
 
   const folderId = await resolveFolderId(user.userId, form.get("folderId"));
   let storedPath: string | null = null;
