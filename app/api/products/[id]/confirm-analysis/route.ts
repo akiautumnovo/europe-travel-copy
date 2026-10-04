@@ -2,7 +2,8 @@ import { analysisResultSchema, inputTypeSchema } from "../../../../../lib/ai/typ
 import { db, json, requireApiUser } from "../../../_shared";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await requireApiUser();
+  const user = await requireApiUser(request);
+  if (user instanceof Response) return user;
   const { id } = await params;
   const body = await request.json() as { type?: unknown; rawText?: unknown; analysis?: unknown };
   const type = inputTypeSchema.parse(body.type);

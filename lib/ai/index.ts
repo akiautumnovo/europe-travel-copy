@@ -1,9 +1,9 @@
-import { env } from "cloudflare:workers";
 import type { AIProvider } from "./provider";
 import { DeepSeekProvider } from "./deepseek";
+import { config as runtimeConfig } from "../bindings";
 
 export function getAIProvider(): AIProvider {
-  const config = env as unknown as Record<string, string | undefined>;
+  const config = runtimeConfig();
   const provider = config.AI_PROVIDER || "deepseek";
   if (provider !== "deepseek") throw new Error(`不支持的 AI Provider：${provider}`);
   if (!config.DEEPSEEK_API_KEY) throw new Error("DeepSeek 尚未配置，请先安全录入 API 密钥");

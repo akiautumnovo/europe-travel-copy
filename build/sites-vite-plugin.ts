@@ -6,7 +6,8 @@ import { resolve } from "node:path";
 import type { Plugin } from "vite";
 
 const localUserId = "local_seedy";
-const localEmail = "seedy@sites.test";
+// 允许用环境变量切换模拟登录的邮箱，用来验证"非白名单账号会被拒绝"的流程。
+const localEmail = process.env.SITES_MOCK_USER_EMAIL || "seedy@sites.test";
 const localFullName = "Seedy";
 const localCookieName = "__sites_local_auth";
 const localHosts = new Set(["localhost", "127.0.0.1", "::1"]);

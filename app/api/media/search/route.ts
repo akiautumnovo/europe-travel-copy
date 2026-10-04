@@ -13,9 +13,15 @@ function getDefaultCache(): Cache | null {
 }
 
 export async function POST(request: Request) {
-  await requireApiUser();
+  const auth=await requireApiUser(request);
+  if(auth instanceof Response)return auth;
+  let input: z.infer<typeof schema>;
   try {
-    const input = schema.parse(await request.json());
+    input = schema.parse(await request.json());
+  } catch {
+    return json({ code: "INVALID_REQUEST", error: "请输入 2-120 个字符的搜索词" }, { status: 400 });
+  }
+  try {
     const provider = getMediaProvider();
     if (!provider) {
       return json({
@@ -25,14 +31,15 @@ export async function POST(request: Request) {
       });
     }
 
+    // 缓存 key 必须带 provider，否则切换图库后会命中另一家的旧结果。
     const cacheKey = new Request(
-      `https://media-cache.local/search?q=${encodeURIComponent(input.query.toLowerCase())}&o=${input.orientation || ""}`,
+      `https://media-cache.local/search?p=${provider.name}&q=${encodeURIComponent(input.query.toLowerCase())}&o=${input.orientation || ""}`,
     );
     const cache = getDefaultCache();
     const cached = cache ? await cache.match(cacheKey) : undefined;
     if (cached) {
       const data = (await cached.json()) as Record<string, unknown>;
-      return json({ ...data, cached: true, configured: true });
+      return json({ ...data, cached: true, configured: true, provider: provider.name });
     }
 
     const result = await provider.searchPhotos(input.query, {
@@ -45,15 +52,15 @@ export async function POST(request: Request) {
       });
       await cache.put(cacheKey, response.clone());
     }
-    return json({ ...result, configured: true });
+    return json({ ...result, configured: true, provider: provider.name });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     return json(
       {
         code: "MEDIA_SEARCH_FAILED",
         error: message.includes("额度")
-          ? "Pixabay 当前额度或频率受限，请稍后再试；本人素材仍可正常使用。"
-          : "Pixabay 图片搜索暂时失败，请稍后重试；本人素材仍可正常使用。",
+          ? "图库当前额度或频率受限，请稍后再试；本人素材仍可正常使用。"
+          : "图库图片搜索暂时失败，请稍后重试；本人素材仍可正常使用。",
       },
       { status: 503 },
     );

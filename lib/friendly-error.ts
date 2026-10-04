@@ -14,5 +14,19 @@ export function friendlyApiError(input:{error?:string;code?:string}|undefined,fa
  if(input?.code==="FACT_CHECK_FAILED")return input.error||"文案包含未确认的日期、价格或其他关键事实，请检查产品事实后重试。";
  if(input?.code==="SEARCH_UNAVAILABLE")return "当前无法联网核验，这条事实暂时不会写入文案。";
  if(input?.code==="STORYBOARD_GENERATION_FAILED")return input.error||"视觉故事板生成暂时失败，请重试。当前文案和已选图片不会丢失。";
+ if(input?.code==="UNAUTHORIZED")return "当前登录账号没有访问权限，请用授权账号登录后重试。";
  return friendlyError(input?.error,fallback);
+}
+
+/**
+ * 统一读取失败响应：先按状态码给出可定位的提示，再退回服务端文案。
+ * 在 `response.json()` 之前调用，避免把 `{error:"..."}` 当成数据渲染。
+ */
+export async function readApiError(response:Response,fallback:string):Promise<string>{
+ if(response.status===401)return "当前登录账号没有访问权限，请用授权账号登录后重试。";
+ if(response.status===403)return "当前账号没有执行这个操作的权限。";
+ if(response.status===404)return "请求的内容不存在，可能已被删除。";
+ let message="";
+ try{const data=await response.json() as {error?:string;code?:string};message=data?.error||""}catch{/* 非 JSON 响应，使用兜底文案 */}
+ return friendlyError(message,fallback);
 }

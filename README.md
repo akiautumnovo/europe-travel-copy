@@ -1,5 +1,10 @@
 # vinext-starter
 
+> **本项目已从 Cloudflare Worker 迁移到 Node 正式版并上线。**
+> 线上地址、改动流程、配置位置、数据位置、排查方法见 **[DEPLOY.md](./DEPLOY.md)**。
+> 下面这份是脚手架自带的说明，描述的是迁移前的运行方式（vinext + wrangler + D1/R2），
+> 仅在第 4 节列出的那些地方仍然相关。
+
 A clean full-stack starter running on [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and Drizzle support.
 
 ## Prerequisites

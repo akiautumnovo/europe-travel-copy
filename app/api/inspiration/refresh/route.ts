@@ -1,10 +1,10 @@
 import { getSearchProvider } from "../../../../lib/search";
-import { getAIProvider } from "../../../../lib/ai";
-import { evergreenTopics,recommendationReason,searchThemes,type InspirationTopic } from "../../../../lib/inspiration";
+import { generateInspirationSet } from "../../../../lib/inspiration-generation";
+import { destinationCandidates,evergreenTopics,recommendationReason,searchThemes,type InspirationTopic } from "../../../../lib/inspiration";
 import { db,json,requireApiUser } from "../../_shared";
 
-export async function POST(){
- const user=await requireApiUser(),today=new Date().toISOString().slice(0,10);
+export async function POST(request:Request){
+ const user=await requireApiUser(request);if(user instanceof Response)return user;const today=new Date().toISOString().slice(0,10);
  const [product,profile,recent]=await Promise.all([
   db().prepare("SELECT name FROM products WHERE user_id=? AND status='focus' ORDER BY updated_at DESC LIMIT 1").bind(user.userId).first<{name:string}>(),
   db().prepare("SELECT settings FROM profiles WHERE id=?").bind(user.userId).first<{settings:string}>(),
@@ -27,12 +27,13 @@ export async function POST(){
    searchSources=useful;
   }catch{reason+=" 本次联网搜索暂时不可用，已从扩展常青题库中更换一组。"}
  }
+ const candidateCities=destinationCandidates(`${today}:refresh:${count}:dest`,10,usedCountries);
  try{
-  const generated=await getAIProvider().generateInspirations({sourceSummaries:searchSources.map(s=>({title:s.title,content:s.content.slice(0,900),institution:s.institution})),previousTitles:previous?.topics?.map(t=>t.title)||[],recentCountries:usedCountries.slice(0,12),productName:product?.name,refreshNo:count});
-  topics=generated.topics.map((topic,index)=>{const source=topic.source_index===null?undefined:searchSources[topic.source_index];return{id:`ai-${count}-${index}-${Date.now()}`,country:topic.country,flag:topic.flag,title:topic.title,reason:topic.reason,audience:topic.audience,contentType:topic.content_type,productRelated:Boolean(product?.name&&topic.title.includes(product.name.slice(0,2))),verification:source?"verified":"evergreen",sources:source?[source]:undefined}});
-  reason=searchSources.length?"这组由近期可靠信息与常青主题共同生成，四条分别解决不同的旅行问题。":"这组已重新组合客群、场景、决策问题和表达结构，而不只是替换目的地。";
+  const generated=await generateInspirationSet({sourceSummaries:searchSources.map(s=>({title:s.title,content:s.content.slice(0,900),institution:s.institution})),previousTitles:previous?.topics?.map(t=>t.title)||[],recentCountries:usedCountries.slice(0,12),productName:product?.name,refreshNo:count,candidateCities});
+  topics=generated.topics.map((topic,index)=>{const source=topic.source_index===null?undefined:searchSources[topic.source_index];return{id:`ai-${count}-${index}-${Date.now()}`,city:topic.city,country:topic.country,flag:topic.flag,title:topic.title,reason:topic.reason,audience:topic.audience,contentType:topic.content_type,productRelated:Boolean(product?.name&&topic.title.includes(product.name.slice(0,2))),verification:source?"verified":"evergreen",sources:source?[source]:undefined}});
+  reason=searchSources.length?"这组由近期可靠信息与常青主题共同生成，四条分别解决不同的旅行问题。":"这组覆盖四个不同国家与城市，并重新组合了客群、场景和决策问题。";
  }catch{reason+=" AI 选题整理暂时不可用，已使用多维度候选池。"}
- const daily={date:today,reason,topics,refreshCount:count,algorithmVersion:2};
+ const daily={date:today,reason,topics,refreshCount:count,algorithmVersion:3};
  settings.dailyInspiration=daily;
  await db().prepare("UPDATE profiles SET settings=?,updated_at=? WHERE id=?").bind(JSON.stringify(settings),new Date().toISOString(),user.userId).run();
  return json({...daily,searchConfigured:Boolean(provider)});

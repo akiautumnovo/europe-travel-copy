@@ -30,6 +30,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+.dev.vars
 
 # vercel
 .vercel
@@ -37,7 +38,10 @@ yarn-error.log*
 # typescript
 next-env.d.ts
 /dist/
+/webapp/
 /.wrangler/
+# 正式版运行期数据（SQLite 数据库 + 上传的图片），不进 git、也不随发布上传
+/.data/
 # Checkout-local execution profile and tool state; never publish them.
 /.sites-runtime/
 /.agents/

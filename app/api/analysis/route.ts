@@ -4,7 +4,8 @@ import { extractTextFromFile } from "../../../lib/files/extract-text";
 import { json, requireApiUser } from "../_shared";
 
 export async function POST(request: Request) {
-  await requireApiUser();
+  const auth=await requireApiUser(request);
+  if(auth instanceof Response)return auth;
   try {
     const contentType = request.headers.get("content-type") || "";
     let type: unknown, text = "", sourceName: string | null = null;

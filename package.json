@@ -10,7 +10,11 @@
     "dev": "node scripts/run-framework.mjs dev",
     "build": "node scripts/run-framework.mjs build",
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "build:web": "node scripts/build-web.mjs",
+    "clean:web-cache": "node scripts/clean-dist-cache.mjs",
+    "serve": "node --import ./scripts/load-env.mjs ./node_modules/next/dist/bin/next start -H 0.0.0.0",
+    "preview:web": "node --import ./scripts/load-env.mjs ./node_modules/next/dist/bin/next dev -p 5180",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern webapp",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

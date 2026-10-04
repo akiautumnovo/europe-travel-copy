@@ -9,7 +9,7 @@ export const profiles = sqliteTable("profiles", {
   id: text("id").primaryKey(), email: text("email").notNull(), onboarding: text("onboarding").notNull().default("{}"), settings: text("settings").notNull().default("{}"), ...timestamps,
 });
 export const products = sqliteTable("products", {
-  id: text("id").primaryKey(), userId: text("user_id").notNull(), name: text("name").notNull(), status: text("status").notNull().default("normal"), sourceType: text("source_type").notNull().default("manual"), rawContent: text("raw_content").notNull().default(""), sourceFilePath: text("source_file_path"), facts: text("facts").notNull().default("{}"), aiAnalysis: text("ai_analysis").notNull().default("{}"), ...timestamps,
+  id: text("id").primaryKey(), userId: text("user_id").notNull(), name: text("name").notNull(), status: text("status").notNull().default("normal"), sourceType: text("source_type").notNull().default("manual"), rawContent: text("raw_content").notNull().default(""), sourceFilePath: text("source_file_path"), facts: text("facts").notNull().default("[]"), aiAnalysis: text("ai_analysis").notNull().default("{}"), ...timestamps,
 });
 export const contents = sqliteTable("contents", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), productId: text("product_id"), topicTitle: text("topic_title").notNull(), topicMeta: text("topic_meta").notNull().default("{}"), sourceInput: text("source_input").notNull().default(""), salesIntensity: integer("sales_intensity").notNull().default(1), status: text("status").notNull().default("draft"), productSnapshot: text("product_snapshot").notNull().default("{}"), fingerprint: text("fingerprint").notNull().default("{}"), ...timestamps,
@@ -24,5 +24,9 @@ export const factCache = sqliteTable("fact_cache", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), queryKey: text("query_key").notNull(), claim: text("claim").notNull(), sources: text("sources").notNull().default("[]"), verificationLevel: text("verification_level").notNull(), status: text("status").notNull(), verifiedAt: text("verified_at").notNull(), expiresAt: text("expires_at"), createdAt: text("created_at").notNull(),
 });
 export const assets = sqliteTable("assets", {
-  id: text("id").primaryKey(), userId: text("user_id").notNull(), assetType: text("asset_type").notNull(), storagePath: text("storage_path"), externalUrl: text("external_url"), sourceName: text("source_name").notNull(), author: text("author"), sourceUrl: text("source_url"), licenseStatus: text("license_status").notNull().default("owned"), riskLevel: text("risk_level").notNull().default("green"), tags: text("tags").notNull().default("[]"), metadata: text("metadata").notNull().default("{}"), contentHash:text("content_hash"), createdAt: text("created_at").notNull(),
+  id: text("id").primaryKey(), userId: text("user_id").notNull(), assetType: text("asset_type").notNull(), storagePath: text("storage_path"), externalUrl: text("external_url"), sourceName: text("source_name").notNull(), author: text("author"), sourceUrl: text("source_url"), licenseStatus: text("license_status").notNull().default("owned"), riskLevel: text("risk_level").notNull().default("green"), tags: text("tags").notNull().default("[]"), metadata: text("metadata").notNull().default("{}"), contentHash:text("content_hash"), folderId:text("folder_id"), createdAt: text("created_at").notNull(),
+});
+// 素材文件夹：parent_id 为空表示顶层，可无限层级（接口限制了最大深度）
+export const assetFolders = sqliteTable("asset_folders", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull(), name: text("name").notNull(), parentId: text("parent_id"), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
 });
