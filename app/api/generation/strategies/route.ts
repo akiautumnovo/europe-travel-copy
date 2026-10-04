@@ -45,8 +45,10 @@ export async function POST(request:Request){
       }
       const criticalIssues=unsupportedSensitiveClaims(blocksToText(current.blocks),facts);
       if(criticalIssues.length)throw new FactCheckError(`事实检查未通过：${criticalIssues.join("；")}`);
-      // AI 自己发现的事实问题不再被丢弃，作为非阻断提示随版本一起返回给前端。
-      return{strategy,draft:current,verification:{...verification,fact_safe:true,fact_issues:verification.fact_issues}};
+      // AI 核验明确判定不安全时必须阻断。不能只把问题作为提示展示后又把 fact_safe 强制改成 true，
+      // 否则正则没有覆盖到的地点、政策、交通等虚构事实仍会进入可采用的候选稿。
+      if(!verification.fact_safe)throw new FactCheckError(`事实检查未通过：${verification.fact_issues.join("；")||"文案包含无法由已确认资料支持的事实"}`);
+      return{strategy,draft:current,verification};
     }));
     const candidates=settled.flatMap(result=>result.status==="fulfilled"?[result.value]:[]);
     const skipped=settled.flatMap(result=>result.status==="rejected"?[result.reason instanceof Error?result.reason.message:"该方向生成失败"]:[]);

@@ -13,6 +13,7 @@
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { cleanDistCache } from "./clean-dist-cache.mjs";
+import { writeWebBuildFingerprint } from "./web-build-fingerprint.mjs";
 
 const nextBin = fileURLToPath(new URL("../node_modules/next/dist/bin/next", import.meta.url));
 
@@ -30,6 +31,7 @@ if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status ?? 1);
 
 const cleanup = cleanDistCache();
+writeWebBuildFingerprint();
 for (const item of cleanup) {
   console.log(
     item.after === 0

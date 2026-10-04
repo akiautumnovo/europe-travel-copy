@@ -71,7 +71,9 @@ BASE_URL=https://travel-copy-assistant.app.workbuddy.host node scripts/smoke-tes
 
 构建产物目录特意叫 `webapp/` 而不是 `.next/`：`.next` / `dist` / `build` 这类构建产物**不会随源码上传**，
 而沙箱启动窗口只有 60 秒，来不及现场构建，所以必须预构建并让产物跟着源码走。
-代价：`webapp/` 属于构建产物但**不能加进 .gitignore**。
+`webapp/` 是可再生构建产物，保留在 `.gitignore` 中、不提交 Git；发布工具上传的是当前工作目录，
+所以发布前仍必须先生成它。`npm run serve` 会核对源码指纹，构建缺失或源码改动后未重建时会直接拒绝启动，
+避免把旧产物误发布。
 
 想改回 Cloudflare Worker：只改 `lib/bindings.ts`（把 `config()`/`db()`/`bucket()` 指回 `env`），
 再恢复 `vite.config.ts` 的构建链即可。

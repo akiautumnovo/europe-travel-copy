@@ -94,10 +94,12 @@ export async function POST(request: Request) {
   if (file.size > 15 * 1024 * 1024) return json({ error: "文件不能超过 15MB" }, { status: 400 });
 
   const folderId = await resolveFolderId(user.userId, form.get("folderId"));
+  let storedPath: string | null = null;
   try {
     const id = crypto.randomUUID();
     const safe = file.name.replace(/[^a-zA-Z0-9._\-\u4e00-\u9fff]/g, "-");
     const path = `${user.userId}/${kind}/${id}-${safe}`;
+    storedPath = path;
     await bucket().put(path, await file.arrayBuffer(), { httpMetadata: { contentType: file.type || "application/octet-stream" } });
     const now = new Date().toISOString();
     await db()
@@ -128,7 +130,12 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
-    // 之前这里没有兜底：写存储或写库失败会直接抛成 500 空响应，前端只能显示"上传失败"什么都查不到。
+    // 文件落盘后数据库写入失败时清理文件，避免产生界面无法管理的孤儿对象。
+    if (storedPath) {
+      try { await bucket().delete(storedPath); } catch (cleanupError) {
+        console.error("[assets] 回滚上传文件失败", storedPath, cleanupError);
+      }
+    }
     console.error("[assets] 保存失败", error);
     return json({ code: "ASSET_SAVE_FAILED", error: "文件保存失败，请重试。" }, { status: 502 });
   }

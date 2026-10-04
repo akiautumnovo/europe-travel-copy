@@ -70,14 +70,15 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     .first<{ storagePath: string | null }>();
   if (!row) return json({ error: "素材不存在或已删除" }, { status: 404 });
 
+  // 先删数据库记录：数据库失败时文件仍可重试；反过来会留下指向不存在文件的坏记录。
+  await db().prepare("DELETE FROM assets WHERE id=? AND user_id=?").bind(id, user.userId).run();
   if (row.storagePath) {
     try {
       await bucket().delete(row.storagePath);
     } catch (error) {
-      // 文件删不掉也要继续删记录，否则界面里永远清不掉这条素材
-      console.error("[assets] 删除存储文件失败", row.storagePath, error);
+      // 此时只会留下不可访问的孤儿文件，可由维护任务安全清理，不会破坏用户可见记录。
+      console.error("[assets] 删除存储文件失败，已保留为待清理孤儿文件", row.storagePath, error);
     }
   }
-  await db().prepare("DELETE FROM assets WHERE id=? AND user_id=?").bind(id, user.userId).run();
   return json({ ok: true });
 }

@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 const timestamps = {
   createdAt: text("created_at").notNull(),
@@ -16,7 +16,7 @@ export const contents = sqliteTable("contents", {
 });
 export const contentVersions = sqliteTable("content_versions", {
   id: text("id").primaryKey(), contentId: text("content_id").notNull(), userId: text("user_id").notNull(), versionNo: integer("version_no").notNull(), strategyType: text("strategy_type").notNull(), textContent: text("text_content").notNull(), blocks: text("blocks").notNull().default("[]"), lockedBlockIds: text("locked_block_ids").notNull().default("[]"), changeType: text("change_type"), changeInstruction: text("change_instruction"), isAdopted: integer("is_adopted", { mode: "boolean" }).notNull().default(false), createdAt: text("created_at").notNull(),
-});
+}, (table) => [uniqueIndex("content_versions_content_version_unique").on(table.contentId, table.userId, table.versionNo)]);
 export const styleDna = sqliteTable("style_dna", {
   id: text("id").primaryKey(), userId: text("user_id").notNull().unique(), stablePreferences: text("stable_preferences").notNull().default("[]"), candidatePreferences: text("candidate_preferences").notNull().default("[]"), negativePreferences: text("negative_preferences").notNull().default("[]"), evidenceSummary: text("evidence_summary").notNull().default("{}"), updatedAt: text("updated_at").notNull(),
 });

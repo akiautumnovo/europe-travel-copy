@@ -19,16 +19,18 @@ export async function POST(request:Request){
  const now=new Date().toISOString();
  const folderId=await resolveFolderId(user.userId,form.get("folderId"));
  for(const file of files){
+  let storedPath:string|null=null;
   try{
    const buffer=await file.arrayBuffer(),hash=await digest(buffer);
    const existing=await db().prepare("SELECT id,source_name as sourceName FROM assets WHERE user_id=? AND content_hash=? LIMIT 1").bind(user.userId,hash).first<{id:string;sourceName:string}>();
    if(existing){items.push({...existing,duplicate:true});continue}
    const id=crypto.randomUUID(),safe=file.name.replace(/[^a-zA-Z0-9._\-\u4e00-\u9fff]/g,"-"),path=`${user.userId}/user-asset/${id}-${safe}`;
+   storedPath=path;
    await bucket().put(path,buffer,{httpMetadata:{contentType:file.type}});
    const metadata={size:file.size,type:file.type,licenseType:choice};
    await db().prepare("INSERT INTO assets (id,user_id,asset_type,storage_path,source_name,license_status,risk_level,tags,metadata,content_hash,folder_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,user.userId,"user_upload",path,file.name,license.status,license.risk,"[]",JSON.stringify(metadata),hash,folderId,now).run();
    items.push({id,sourceName:file.name,duplicate:false});
-  }catch(error){failed.push({sourceName:file.name,error:error instanceof Error?error.message:"写入失败"})}
+  }catch(error){if(storedPath)try{await bucket().delete(storedPath)}catch(cleanupError){console.error("[assets] 回滚批量上传文件失败",storedPath,cleanupError)}failed.push({sourceName:file.name,error:error instanceof Error?error.message:"写入失败"})}
  }
  if(!items.length)return json({error:failed[0]?.error||"上传失败",failed},{status:422});
  return json({items,failed},{status:201});

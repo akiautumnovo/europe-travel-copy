@@ -2,6 +2,13 @@ import type { DraftBlock, LockedFact } from "./ai/types";
 
 export function parseJson<T>(value: unknown, fallback: T): T { try { return typeof value === "string" ? JSON.parse(value) as T : fallback; } catch { return fallback; } }
 export function blocksToText(blocks: DraftBlock[]) { return blocks.map(b=>b.text).join("\n\n"); }
+
+/** 并发保存同一内容版本时，数据库唯一约束会把后到请求转成可重试的 409。 */
+export function isVersionConflict(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /(?:UNIQUE constraint failed|unique constraint|SQLITE_CONSTRAINT)/i.test(message)
+    && /content_versions|content_id|version_no/i.test(message);
+}
 /**
  * 解析锁定事实。
  * 必须防御非数组：`products.facts` 的默认值是 `'{}'`（对象），

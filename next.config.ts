@@ -7,10 +7,10 @@ const nextConfig: NextConfig = {
    * 原因：发布到云沙箱时，`.next` / `dist` / `build` 这类构建产物不会随源码上传
    * （实测报错：Could not find a production build in the '.next' directory），
    * 而沙箱启动窗口只有 60 秒，来不及现场跑一次 next build。
-   * 换成 `webapp/` 后会随源码一起上传，线上启动只需 1~2 秒。
+   * 换成 `webapp/` 后会随发布工作目录一起上传，线上启动只需 1~2 秒。
    *
-   * 代价：`webapp/` 属于构建产物但必须留在目录里（不要加进 .gitignore）。
-   * 改完代码后要先 `npm run build:web` 再重新发布，否则线上跑的还是旧产物。
+   * `webapp/` 是可再生构建产物，不提交 Git；发布前必须运行 `npm run build:web`。
+   * `npm run serve` 会校验源码指纹，阻止启动缺失或过期的构建产物。
    */
   distDir: "webapp",
   experimental: {

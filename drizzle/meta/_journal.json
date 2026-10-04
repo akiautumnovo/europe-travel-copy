@@ -22,6 +22,20 @@
       "when": 1790946000000,
       "tag": "0002_phase5_asset_hash",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1791032400000,
+      "tag": "0003_phase6_asset_folders",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1791118800000,
+      "tag": "0004_content_version_unique",
+      "breakpoints": true
     }
   ]
 }
