@@ -1,5 +1,7 @@
 "use client";
+import { useState } from "react";
 import { X } from "lucide-react";
+import { momentsLayout } from "@/lib/moments-layout";
 
 export type PreviewImage = { key: string; imageUrl: string; label: string };
 
@@ -24,6 +26,9 @@ export default function MomentsPreview({
   const paragraphs = blocks.map((block) => block.text.trim()).filter(Boolean);
   // 微信朋友圈最多展示 9 张，多的只提示不展示
   const visible = images.slice(0, 9);
+  // 默认按微信实际效果（等比放大填充 + 居中裁切）显示；可切换回原图完整比例，看清裁掉了什么。
+  const [showOriginal, setShowOriginal] = useState(false);
+  const layout = momentsLayout(visible.length);
 
   return (
     <div className="moments-backdrop" onClick={onClose}>
@@ -46,13 +51,27 @@ export default function MomentsPreview({
               </div>
 
               {visible.length > 0 ? (
-                <div className={`moments-images n${visible.length}`}>
-                  {visible.map((image, index) => (
-                    <a key={image.key} href={image.imageUrl} target="_blank" rel="noreferrer" title={`第${index + 1}张：在新窗口打开原图，右键另存为即可发布`}>
-                      <img src={image.imageUrl} alt={image.label || `第 ${index + 1} 张配图`} />
-                    </a>
-                  ))}
-                </div>
+                <>
+                  <div className={`moments-images n${visible.length} ${showOriginal ? "view-original" : "view-cropped"}`}>
+                    {visible.map((image, index) => (
+                      <a key={image.key} href={image.imageUrl} target="_blank" rel="noreferrer" title={`第${index + 1}张：在新窗口打开原图，右键另存为即可发布`}>
+                        <img src={image.imageUrl} alt={image.label || `第 ${index + 1} 张配图`} />
+                        <span className="moments-index">{index + 1}</span>
+                      </a>
+                    ))}
+                  </div>
+                  <div className="moments-layout-note">
+                    <div className="moments-layout-head">
+                      <strong>微信会这样显示：{layout.display}</strong>
+                      <button type="button" onClick={() => setShowOriginal((v) => !v)}>
+                        {showOriginal ? "看微信裁切后" : "看原图完整比例"}
+                      </button>
+                    </div>
+                    <p>裁切：{layout.crop}</p>
+                    <p>顺序：{layout.order}</p>
+                    {layout.highlight && <p>{layout.highlight}</p>}
+                  </div>
+                </>
               ) : (
                 <p className="moments-noimage">这条还没有配图，点「配图」可以搜索图库或选择本人素材。</p>
               )}

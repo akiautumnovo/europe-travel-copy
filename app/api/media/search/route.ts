@@ -32,10 +32,10 @@ export async function POST(request: Request) {
       });
     }
 
-    // 缓存 key 必须带 provider，否则切换图库后会命中另一家的旧结果。
-    const orientation = input.orientation ?? "square";
+    // 缓存 key 必须带 provider，否则切换图库后会命中另一家的旧结果；v=3 起不再按比例筛选。
+    const orientation = input.orientation;
     const cacheKey = new Request(
-      `https://media-cache.local/search?v=2&p=${provider.name}&q=${encodeURIComponent(input.query.toLowerCase())}&o=${orientation}`,
+      `https://media-cache.local/search?v=3&p=${provider.name}&q=${encodeURIComponent(input.query.toLowerCase())}&o=${orientation ?? "all"}`,
     );
     const cache = getDefaultCache();
     const cached = cache ? await cache.match(cacheKey) : undefined;
@@ -45,12 +45,11 @@ export async function POST(request: Request) {
     }
 
     const result = await provider.searchPhotos(input.query, {
-      // 多取一批再做地点冲突审查与比例排序，避免过滤后无图可用。
-      // 图库以 1.5（横）/0.67（竖）为主，方形结果占比约 3~5%，只取 20 张会整批被过滤掉。
-      perPage: 200,
+      // 不再按比例筛选，取一批做地点冲突审查后按相关性排序即可，没必要拉满。
+      perPage: 60,
       orientation,
     });
-    const reviewed = { ...result, photos: reviewMediaPhotos(input.query, result.photos, orientation, 10) };
+    const reviewed = { ...result, photos: reviewMediaPhotos(input.query, result.photos, 10) };
     if (cache) {
       const response = Response.json(reviewed, {
         headers: { "cache-control": "public, max-age=86400" },

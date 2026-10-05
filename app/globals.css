@@ -200,7 +200,7 @@ html,body{max-width:100%;overflow-x:hidden}.mobile-editor-bar{display:none}.sele
 .moments-images.n1{grid-template-columns:1fr;max-width:200px}
 .moments-images.n2{grid-template-columns:repeat(2,1fr);max-width:230px}
 .moments-images.n4{grid-template-columns:repeat(2,1fr);max-width:230px}
-.moments-images a{display:block}
+.moments-images a{display:block;position:relative}
 .moments-images img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;background:#eef3f3}
 .moments-images.n1 img{aspect-ratio:4/3;border-radius:6px}
 .moments-noimage,.moments-note{margin:10px 0 0;color:var(--muted);font-size:12px;line-height:1.6}
@@ -229,3 +229,13 @@ html,body{max-width:100%;overflow-x:hidden}.mobile-editor-bar{display:none}.sele
 .locked-fact span{color:#7b8d94;font-size:12px}
 .locked-fact strong{color:#173b4e;font-size:14px;font-weight:700;line-height:1.45;word-break:break-word}
 @media(max-width:700px){.locked-facts-grid{grid-template-columns:1fr}.locked-facts-bar{padding:12px}}
+
+/* 朋友圈配图：按数量自适应裁切 + 上传顺序提示（微信单图约 4:3、多图 1:1，均居中裁切） */
+.moments-images.view-original img{object-fit:contain}
+.moments-index{position:absolute;left:4px;top:4px;display:grid;width:18px;height:18px;place-items:center;border-radius:50%;background:#0b2a3dcc;color:#fff;font-size:11px;font-weight:800;line-height:1}
+.moments-layout-note{margin-top:10px;padding:10px 12px;border:0.5px solid var(--line);border-radius:10px;background:#f6fbfa}
+.moments-layout-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
+.moments-layout-head strong{font-size:13px;color:#0f3b4a}
+.moments-layout-head button{padding:4px 9px;border:0.5px solid #c9d8da;border-radius:8px;background:#fff;color:#3d6b77;font-size:12px;cursor:pointer}
+.moments-layout-head button:hover{border-color:#8ecfc7;color:#126d6c}
+.moments-layout-note p{margin:5px 0 0;color:#5b7481;font-size:12px;line-height:1.6}

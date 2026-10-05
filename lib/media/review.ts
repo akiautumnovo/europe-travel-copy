@@ -25,28 +25,16 @@ function countryGroups(value: string) {
   return COUNTRY_TERMS.flatMap((terms, index) => terms.some((term) => normalized.includes(term)) ? [index] : []);
 }
 
-function aspectScore(photo: MediaPhoto, orientation: "landscape" | "portrait" | "square") {
-  const target = orientation === "landscape" ? 1.5 : orientation === "portrait" ? 0.8 : 1;
-  const ratio = photo.width / Math.max(photo.height, 1);
-  return Math.abs(Math.log(ratio / target));
-}
-
-function hasSuitableAspect(photo: MediaPhoto, orientation: "landscape" | "portrait" | "square") {
-  const ratio = photo.width / Math.max(photo.height, 1);
-  if (orientation === "landscape") return ratio >= 1.2;
-  if (orientation === "portrait") return ratio <= 0.9;
-  // 朋友圈九宫格按方形展示，限制过宽/过高图片，减少关键主体被裁掉的概率。
-  return ratio >= 0.75 && ratio <= 1.33;
-}
-
 /**
  * 图库可能按宽泛标签返回别国图片。明确搜了国家时，剔除标签里明确写着其他国家的结果；
- * 无法从标签判断地点的图片仍保留，再按关键词命中和朋友圈常用比例排序。
+ * 无法从标签判断地点的图片仍保留，再按关键词命中排序。
+ *
+ * 不再限制图片尺寸/比例：朋友圈九宫格由前端按显示比例自动裁切，
+ * 之前按 0.75-1.33 过滤会让常见主题只剩个位数候选。
  */
 export function reviewMediaPhotos(
   query: string,
   photos: MediaPhoto[],
-  orientation: "landscape" | "portrait" | "square" = "square",
   limit = 10,
 ) {
   const expectedCountries = new Set(countryGroups(query));
@@ -54,7 +42,6 @@ export function reviewMediaPhotos(
 
   return photos
     .filter((photo) => {
-      if (!hasSuitableAspect(photo, orientation)) return false;
       if (!expectedCountries.size) return true;
       const found = countryGroups(photo.alt);
       return !found.length || found.some((country) => expectedCountries.has(country));
@@ -63,9 +50,9 @@ export function reviewMediaPhotos(
       const haystack = photo.alt.toLowerCase();
       const matches = queryWords.filter((word) => haystack.includes(word)).length;
       const countryMatch = countryGroups(photo.alt).some((country) => expectedCountries.has(country)) ? 1 : 0;
-      return { photo, index, countryMatch, matches, aspect: aspectScore(photo, orientation) };
+      return { photo, index, countryMatch, matches };
     })
-    .sort((a, b) => b.countryMatch - a.countryMatch || b.matches - a.matches || a.aspect - b.aspect || a.index - b.index)
+    .sort((a, b) => b.countryMatch - a.countryMatch || b.matches - a.matches || a.index - b.index)
     .slice(0, limit)
     .map(({ photo }) => photo);
 }
