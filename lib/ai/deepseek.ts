@@ -28,14 +28,14 @@ export class DeepSeekProvider implements AIProvider {
   async generateCopy(input: GenerationContext): Promise<Draft> {
     return this.callJson(`写一篇完整的欧洲旅行朋友圈，主题是“${input.topic}”。
 只返回 JSON：{"blocks":[{"id":"b1","text":"段落文字","category":"objective_fact|professional_advice|personal_experience|marketing|literary"}]}。
-每段一个 block，优先写成 6 段，全文控制在 400-460 个非空白字符（建议范围 300-500 字，绝不能超过 500 字）。
+每段一个 block，优先写成 6 段，全文控制在 400-460 个非空白字符（建议范围 300-500 字，绝不能超过 500 字），并使用 10-12 个 Emoji 或视觉符号（平均每段 2 个）。
 
 【像真人的写法】
 - 开头直接切入：从一个具体场景、一句吐槽或一个细节开始，禁止“最近很多朋友问我”“今天想和大家分享”这类开场
 - 句子有节奏但必须完整，禁止为了口语感写残句或把结尾截断
 - 一段只说一件事，宁可留白，不要用形容词填满
 - 具体名词优于形容词：写“早上七点的渔市”，不写“绝美的清晨”
-- 全文使用约 10 个 Emoji 或视觉符号（建议 8-12 个，【与】分别计一个），用在段首点题或句尾收束都行，也可用【】、｜、✅、✨、🔥组织层次，不机械堆砌、不连续堆叠
+- 全文 10-12 个 Emoji 或视觉符号（【与】分别计一个），平均每段 1-2 个：段首点题或句尾收束都行，也可用【】、｜、✅、✨、🔥组织层次，不机械堆砌、不连续堆叠
 - 前半段约占六成：围绕选题提供有趣、专业的事实分享或科普；后半段约占四成：自然过渡到产品方案
 - 产品段的第一句必须是过渡句：先顺着上文的知识话题往下说（回应上文留下的疑问，或把知识落到“怎么亲眼看到、亲身走一遍”），下一句再引出产品事实；禁止“说到这里”“接下来介绍我们的产品”这类生硬转折，也不要一上来就罗列事实
 - 前三段 category 只能用 literary 或 professional_advice；产品方案从第四段开始，category 用 objective_fact 或 marketing
@@ -62,7 +62,7 @@ export class DeepSeekProvider implements AIProvider {
     const locked = input.blocks.filter(b=>input.lockedBlockIds.includes(b.id));
     const scope = input.targetBlockId ? `只允许修改 id=${input.targetBlockId} 的段落，其他段落逐字保留。` : "修改全文，但 lockedBlockIds 中的段落必须逐字保留。";
     const result = await this.callJson(`${scope}\n修改要求：${input.instruction}\n只返回与输入相同 id、相同顺序的 JSON blocks，每个 block 必须保留 id、text、category 三个字段，category 沿用输入的取值。禁止改变锁定事实，禁止编造经历或数据。
-改写后保持专业且有旅行博主式吸引力，句子和结尾必须完整；全文控制在 400-470 个非空白字符（建议 300-500 字，绝不能超过 500 字），并使用约 10 个 Emoji 或视觉符号（建议 8-12 个，【与】分别计一个）。维持“前半段知识分享、自然过渡、后半段精选产品事实”的结构，产品段的第一句必须先承接上文知识再引出产品（不要生硬转折，也不要罗列事实），前半段 category 只能用 literary 或 professional_advice，产品段 category 用 objective_fact 或 marketing。不得出现虚构亲历、职业身份或客户故事。
+改写后保持专业且有旅行博主式吸引力，句子和结尾必须完整；全文控制在 400-470 个非空白字符（建议 300-500 字，绝不能超过 500 字），并使用 10-12 个 Emoji 或视觉符号（平均每段 1-2 个，【与】分别计一个）。维持“前半段知识分享、自然过渡、后半段精选产品事实”的结构，产品段的第一句必须先承接上文知识再引出产品（不要生硬转折，也不要罗列事实），前半段 category 只能用 literary 或 professional_advice，产品段 category 用 objective_fact 或 marketing。不得出现虚构亲历、职业身份或客户故事。
 锁定段落：${JSON.stringify(locked)}\n锁定事实：${JSON.stringify(input.facts)}\n可靠来源：${JSON.stringify(input.sources||[])}\n当前段落：${JSON.stringify(input.blocks)}`, lenientDraftSchema, { temperature: 0.75, system: WRITER_SYSTEM });
     const byId = new Map(input.blocks.map(b=>[b.id,b.category] as const));
     return { blocks: result.blocks.map(b=>({ ...b, category: byId.get(b.id) ?? b.category })) };

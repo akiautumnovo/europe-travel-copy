@@ -10,6 +10,8 @@ export const LENGTH_HARD:[number,number]=[280,620];
 /** Emoji/视觉符号的建议区间（只提示）与硬性区间（才拦截）。上限放宽，允许更活泼的表达。 */
 export const SYMBOL_ADVISED:[number,number]=[8,12];
 export const SYMBOL_HARD:[number,number]=[5,14];
+/** 自动补足的目标数量：模型写得偏少时补到这里，再少也不低于 SYMBOL_ADVISED 下限。 */
+export const SYMBOL_TARGET=10;
 
 export function isProductFactBlock(block:DraftBlock):boolean{
   return block.category==="objective_fact"||block.category==="marketing";
@@ -65,8 +67,8 @@ export function transitionIssues(draft:Draft):string[]{
   const productIndex=draft.blocks.findIndex(isProductFactBlock);
   if(productIndex<1)return[];
   const clean=(value:string)=>value.replace(/\s+/g,"");
-  const head=clean(draft.blocks[productIndex].text).slice(0,24);
-  const tail=clean(draft.blocks[productIndex-1].text).slice(-24);
+  const head=clean(draft.blocks[productIndex].text).slice(0,48);
+  const tail=clean(draft.blocks[productIndex-1].text).slice(-30);
   if(transitionCuePattern.test(head)||transitionCuePattern.test(tail))return[];
   return["产品段开头的衔接偏直接，建议先用一句话把上文知识接到产品上（例如先回应上文留下的疑问，再说到怎么亲眼看到、亲身走一遍），下一句再引出产品事实。"];
 }
@@ -94,12 +96,19 @@ export function normalizeVisualSymbols(draft:Draft,protectedIds:string[]=[],min=
     blocks[index].text=blocks[index].text.replace(/【([^】]*)】/gu,(pair,inner:string)=>{if(excess<2)return pair;excess-=2;return inner});
   }
   let count=(blocksToText(blocks).match(visualPattern)||[]).length;
-  // 每个段落最多补一个前缀，所以补足目标不超过段落数；同时不低于硬性下限。
-  const target=Math.max(min,Math.min(SYMBOL_ADVISED[0],blocks.length));
+  // 补足：第一轮在段首加前缀（每段最多一个），第二轮在段末追加（比连续前缀自然）。
+  // 段末一轮跳过最后一段，避免遮住“结尾句完整”的判定。每段最多承担 2 个，故目标不超过 2n-1。
+  const target=Math.max(min,Math.min(SYMBOL_TARGET,blocks.length*2-1));
   const prefixes=["✨ ","🌍 ","📍 ","🏛️ ","🌿 ","🧭 "];
   for(let index=0;index<blocks.length&&count<target;index++){
     if(protectedSet.has(blocks[index].id))continue;
     blocks[index].text=`${prefixes[count%prefixes.length]}${blocks[index].text}`;
+    count+=1;
+  }
+  const suffixes=["✨","🌿","🧭","📍","🏔️","🌍"];
+  for(let index=blocks.length-2;index>=0&&count<target;index--){
+    if(protectedSet.has(blocks[index].id))continue;
+    blocks[index].text=`${blocks[index].text}${suffixes[count%suffixes.length]}`;
     count+=1;
   }
   return{blocks};
