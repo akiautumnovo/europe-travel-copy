@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { getAIProvider } from "../../../../lib/ai";
 import { blocksToText,normalizeFacts,parseJson } from "../../../../lib/content";
-import { commonSenseFactIssues,copyQualityIssues,normalizeVisualSymbols,productFactDraft,reviewWarnings } from "../../../../lib/copy-quality";
+import { commonSenseFactIssues,copyQualityIssues,normalizeVisualSymbols,productFactDraft,reviewWarnings,transitionIssues } from "../../../../lib/copy-quality";
 import type { GenerationContext } from "../../../../lib/ai/types";
 import type { InspirationTopic } from "../../../../lib/inspiration";
 import { labels } from "../../../../lib/style";
@@ -28,11 +28,12 @@ export async function POST(request:Request){
   const context:GenerationContext={topic,facts,salesIntensity:1,stylePreferences:labels(style?.stable_preferences),angleType:inspiration?.angleType||"custom",sources};
   const ai=getAIProvider(),strategy={type:"advisor" as const,title:"产品知识分享",approach:"前半段知识内容，后半段自然连接产品方案",opening:topic};
   let draft=normalizeVisualSymbols(await ai.generateCopy(context,strategy)),verification=await ai.verifyCopy(context,productFactDraft(draft));
-  let factIssues=verification.fact_safe?[]:commonSenseFactIssues(verification.fact_issues),issues=copyQualityIssues(draft);
-  if(issues.length||factIssues.length){draft=normalizeVisualSymbols(await ai.reviseCopy({...context,blocks:draft.blocks,lockedBlockIds:[],instruction:`这是唯一一次质量修复。全文控制在400-470个非空白字符（建议300-500字，绝不要超过500字）；恰好保留7个Emoji或视觉符号；前三段只写知识内容，第四段以后再自然连接2-5条产品事实，最后一句必须完整。凡涉及价格、日期、天数、住宿、航班、名额等数据，只使用锁定事实里的原始写法，不要自行增减或改写数值。修正以下问题：${[...issues,...factIssues].join("；")}`}));issues=copyQualityIssues(draft);verification=await ai.verifyCopy(context,productFactDraft(draft));factIssues=verification.fact_safe?[]:commonSenseFactIssues(verification.fact_issues)}
+  let factIssues=verification.fact_safe?[]:commonSenseFactIssues(verification.fact_issues),issues=copyQualityIssues(draft),transitions=transitionIssues(draft);
+  if(issues.length||factIssues.length||transitions.length){draft=normalizeVisualSymbols(await ai.reviseCopy({...context,blocks:draft.blocks,lockedBlockIds:[],instruction:`这是唯一一次质量修复。全文控制在400-470个非空白字符（建议300-500字，绝不要超过500字）；使用约10个Emoji或视觉符号（建议8-12个）；前三段只写知识内容；第四段（产品段）的第一句必须先承接上文知识再引出产品，禁止生硬转折和一上来就罗列事实；产品段只保留2-5条最相关的锁定事实；最后一句必须完整。凡涉及价格、日期、天数、住宿、航班、名额等数据，只使用锁定事实里的原始写法，不要自行增减或改写数值。修正以下问题：${[...issues,...factIssues,...transitions].join("；")}`}));issues=copyQualityIssues(draft);verification=await ai.verifyCopy(context,productFactDraft(draft));factIssues=verification.fact_safe?[]:commonSenseFactIssues(verification.fact_issues);transitions=transitionIssues(draft)}
   if(issues.length)return json({code:"COPY_QUALITY_FAILED",error:`文案完整性检查未通过：${issues.join("；")}`},{status:422});
   if(factIssues.length)throw new FactCheckError(`常识检查未通过：${factIssues.join("；")}`);
-  verification={...verification,fact_safe:true,fact_issues:reviewWarnings(draft)};
+  // 过渡仍偏直接时只作提示，不拦截（用户策略：尽量不拦）。
+  verification={...verification,fact_safe:true,fact_issues:[...reviewWarnings(draft),...transitions]};
   const id=crypto.randomUUID(),now=new Date().toISOString(),topicMeta={inspiration:inspiration||{angleType:"custom",title:topic,sources:[]}};
   const productSnapshot={id:product.id,name:product.name,facts,analysis:parseJson(product.ai_analysis,{})};
   await db().prepare("INSERT INTO contents (id,user_id,product_id,topic_title,topic_meta,source_input,sales_intensity,status,product_snapshot,fingerprint,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,user.userId,product.id,topic,JSON.stringify(topicMeta),topic,1,"draft",JSON.stringify(productSnapshot),JSON.stringify({countries:inspiration?[inspiration.country]:[],theme:topic,product:product.id,contentTypes:[inspiration?.angleType||"custom"]}),now,now).run();

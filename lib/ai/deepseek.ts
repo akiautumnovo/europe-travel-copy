@@ -35,8 +35,9 @@ export class DeepSeekProvider implements AIProvider {
 - 句子有节奏但必须完整，禁止为了口语感写残句或把结尾截断
 - 一段只说一件事，宁可留白，不要用形容词填满
 - 具体名词优于形容词：写“早上七点的渔市”，不写“绝美的清晨”
-- 全文恰好使用 7 个 Emoji 或视觉符号（【与】分别计一个），可用【】、｜、✅、✨、🔥组织层次，不机械堆砌
+- 全文使用约 10 个 Emoji 或视觉符号（建议 8-12 个，【与】分别计一个），用在段首点题或句尾收束都行，也可用【】、｜、✅、✨、🔥组织层次，不机械堆砌、不连续堆叠
 - 前半段约占六成：围绕选题提供有趣、专业的事实分享或科普；后半段约占四成：自然过渡到产品方案
+- 产品段的第一句必须是过渡句：先顺着上文的知识话题往下说（回应上文留下的疑问，或把知识落到“怎么亲眼看到、亲身走一遍”），下一句再引出产品事实；禁止“说到这里”“接下来介绍我们的产品”这类生硬转折，也不要一上来就罗列事实
 - 前三段 category 只能用 literary 或 professional_advice；产品方案从第四段开始，category 用 objective_fact 或 marketing
 - 产品段只选择 2-5 条与主题最相关的锁定事实，不要把所有事实强行塞入
 - 结尾必须是完整句，可以克制，但不能停在逗号、冒号、连接词或未闭合括号处
@@ -50,6 +51,8 @@ export class DeepSeekProvider implements AIProvider {
 【对比例子】（只示意语感，禁止照抄其中任何句子或复用其场景）
 坏：“在瑞士的这几天，真的被治愈了。不是因为风景有多绝，而是那种久违的松弛感。此生必去的宝藏之地！”
 好：“瑞士的下午四点，缆车上只有零星几个人。风很大，说话要凑近才听得见。下山时，山脚的灯已经亮了一半。”
+过渡坏：“说到这里，我们的 8 日小团正好适合你。”
+过渡好：“想在同一段铁轨上多看几眼冰川，就得在山里多住一晚——下面这条线路正是这么排的。”
 
 【事实纪律】（最高优先级，与上文冲突时以事实纪律为准）
 禁止编造客户经历、销售数据或第一人称亲历；价格、日期、产品行程地点、天数、酒店、航班、名额只能使用锁定事实且不得改写数值。稳定的人文、历史和旅游常识可以使用，但不要编造精确数字；若选题属于近期信息，只能使用“可靠来源”中明确提供的信息。
@@ -59,7 +62,7 @@ export class DeepSeekProvider implements AIProvider {
     const locked = input.blocks.filter(b=>input.lockedBlockIds.includes(b.id));
     const scope = input.targetBlockId ? `只允许修改 id=${input.targetBlockId} 的段落，其他段落逐字保留。` : "修改全文，但 lockedBlockIds 中的段落必须逐字保留。";
     const result = await this.callJson(`${scope}\n修改要求：${input.instruction}\n只返回与输入相同 id、相同顺序的 JSON blocks，每个 block 必须保留 id、text、category 三个字段，category 沿用输入的取值。禁止改变锁定事实，禁止编造经历或数据。
-改写后保持专业且有旅行博主式吸引力，句子和结尾必须完整；全文控制在 400-470 个非空白字符（建议 300-500 字，绝不能超过 500 字），并恰好使用 7 个 Emoji 或视觉符号（【与】分别计一个）。维持“前半段知识分享、自然过渡、后半段精选产品事实”的结构，前半段 category 只能用 literary 或 professional_advice，产品段 category 用 objective_fact 或 marketing。不得出现虚构亲历、职业身份或客户故事。
+改写后保持专业且有旅行博主式吸引力，句子和结尾必须完整；全文控制在 400-470 个非空白字符（建议 300-500 字，绝不能超过 500 字），并使用约 10 个 Emoji 或视觉符号（建议 8-12 个，【与】分别计一个）。维持“前半段知识分享、自然过渡、后半段精选产品事实”的结构，产品段的第一句必须先承接上文知识再引出产品（不要生硬转折，也不要罗列事实），前半段 category 只能用 literary 或 professional_advice，产品段 category 用 objective_fact 或 marketing。不得出现虚构亲历、职业身份或客户故事。
 锁定段落：${JSON.stringify(locked)}\n锁定事实：${JSON.stringify(input.facts)}\n可靠来源：${JSON.stringify(input.sources||[])}\n当前段落：${JSON.stringify(input.blocks)}`, lenientDraftSchema, { temperature: 0.75, system: WRITER_SYSTEM });
     const byId = new Map(input.blocks.map(b=>[b.id,b.category] as const));
     return { blocks: result.blocks.map(b=>({ ...b, category: byId.get(b.id) ?? b.category })) };
