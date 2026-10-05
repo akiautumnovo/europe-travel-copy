@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { getAIProvider } from "../../../../lib/ai";
 import { blocksToText,normalizeFacts,parseJson } from "../../../../lib/content";
-import { copyQualityIssues,normalizeVisualSymbols } from "../../../../lib/copy-quality";
+import { copyQualityIssues,manualReviewWarnings,normalizeVisualSymbols,productFactDraft } from "../../../../lib/copy-quality";
 import type { GenerationContext } from "../../../../lib/ai/types";
 import type { InspirationTopic } from "../../../../lib/inspiration";
 import { labels } from "../../../../lib/style";
@@ -12,7 +12,6 @@ class FactCheckError extends Error{}
 const digits=(value:string):string[]=>(value.match(/\d+(?:[.,]\d+)?/g)||[]).map(number=>number.replace(/,/g,""));
 function unsupportedSensitiveClaims(text:string,facts:GenerationContext["facts"]){const rules=[{label:"价格",field:/价格|费用|团费/,pattern:/(?:¥|￥|€|\$)\s?\d[\d,.]*|\d[\d,.]*\s?(?:元|欧元|人民币)/gi},{label:"日期",field:/日期|出发|时间/,pattern:/\d{4}[年/-]\d{1,2}(?:[月/-]\d{1,2}日?)?|\d{1,2}月\d{1,2}日/gi},{label:"行程天数",field:/天数|行程|时长/,pattern:/(?:全程|整个行程|行程(?:共|总计|合计)?|共计|总共|为期)\s*\d+\s?(?:天|日)(?:\s*\d+\s?晚)?/gi},{label:"酒店等级",field:/酒店|住宿|星级/,pattern:/(?:[四五六]|[4-6])星(?:级)?酒店/gi},{label:"剩余名额",field:/名额|席位|余位/,pattern:/(?:仅剩|剩余|余)\s*\d+\s?(?:席|位|个名额)/gi},{label:"航班",field:/航班|航线/,pattern:/\b[A-Z]{2}\s?\d{3,4}\b/g}];return[...new Set(rules.flatMap(rule=>(text.match(rule.pattern)||[]).filter(claim=>{const claimDigits=digits(claim);return!facts.some(fact=>rule.field.test(fact.field)&&claimDigits.every(number=>digits(fact.value).includes(number)))}).map(claim=>`${rule.label}“${claim}”没有对应的锁定事实`)))]}
 function quotedClaims(issues:string[]){return[...new Set(issues.flatMap(issue=>[...issue.matchAll(/[“「『]([^”」』]{4,})[”」』]/g)].map(match=>match[1].trim())).filter(Boolean))]}
-function blockingFactIssues(issues:string[],angleType:GenerationContext["angleType"]){if(angleType==="current")return issues;return issues.filter(issue=>/价格|团费|费用|日期|出发日期|天数|\d+\s*晚|酒店|住宿|航班|名额|席位|签证|退改/.test(issue))}
 
 export async function POST(request:Request){
  const user=await requireApiUser(request);if(user instanceof Response)return user;
@@ -29,14 +28,14 @@ export async function POST(request:Request){
   const style=await db().prepare("SELECT stable_preferences FROM style_dna WHERE user_id=?").bind(user.userId).first<{stable_preferences:string}>();
   const context:GenerationContext={topic,facts,salesIntensity:1,stylePreferences:labels(style?.stable_preferences),angleType:inspiration?.angleType||"custom",sources};
   const ai=getAIProvider(),strategy={type:"advisor" as const,title:"产品知识分享",approach:"前半段知识内容，后半段自然连接产品方案",opening:topic};
-  let draft=normalizeVisualSymbols(await ai.generateCopy(context,strategy)),verification=await ai.verifyCopy(context,draft),factIssues=blockingFactIssues(verification.fact_issues,context.angleType);
-  let issues=copyQualityIssues(draft),sensitive=unsupportedSensitiveClaims(blocksToText(draft.blocks),facts);
+  let draft=normalizeVisualSymbols(await ai.generateCopy(context,strategy)),verification=await ai.verifyCopy(context,productFactDraft(draft)),factIssues=verification.fact_safe?[]:(verification.fact_issues.length?verification.fact_issues:["产品方案段存在与锁定资料不一致的内容"]);
+  let issues=copyQualityIssues(draft),sensitive=unsupportedSensitiveClaims(blocksToText(productFactDraft(draft).blocks),facts);
   const unsupported=quotedClaims(factIssues);
-  if(issues.length||sensitive.length||factIssues.length){draft=normalizeVisualSymbols(await ai.reviseCopy({...context,blocks:draft.blocks,lockedBlockIds:[],instruction:`这是唯一一次质量修复。务必将全文写到410-470个非空白字符，低于350字视为失败；恰好保留7个Emoji或视觉符号；前三段只写知识内容，第四段以后再自然连接2-5条产品事实，最后一句必须完整。删除所有没有锁定事实或可靠来源支持的精确数字、价格、日期、天数、酒店、航班和名额，不要换一种说法保留。稳定的人文、历史和旅游常识可以保留。修正以下问题：${[...issues,...sensitive,...factIssues].join("；")}`}));issues=copyQualityIssues(draft);sensitive=unsupportedSensitiveClaims(blocksToText(draft.blocks),facts);const finalText=blocksToText(draft.blocks),remaining=unsupported.filter(claim=>finalText.includes(claim));if(remaining.length)throw new FactCheckError(`事实检查未通过：仍包含未获支持的信息“${remaining.join("”、“")}”`);factIssues=[]}
+  if(issues.length||sensitive.length||factIssues.length){draft=normalizeVisualSymbols(await ai.reviseCopy({...context,blocks:draft.blocks,lockedBlockIds:[],instruction:`这是唯一一次质量修复。务必将全文写到410-470个非空白字符，低于350字视为失败；恰好保留7个Emoji或视觉符号；前三段只写知识内容，第四段以后再自然连接2-5条产品事实，最后一句必须完整。只修正产品方案段中与锁定产品资料不一致的内容；前三段知识内容不参与产品事实核验，不要为了通过核验而删除。删除产品方案段中没有锁定事实支持的精确数字、价格、日期、天数、酒店、航班和名额。修正以下问题：${[...issues,...sensitive,...factIssues].join("；")}`}));issues=copyQualityIssues(draft);sensitive=unsupportedSensitiveClaims(blocksToText(productFactDraft(draft).blocks),facts);const finalProductText=blocksToText(productFactDraft(draft).blocks),remaining=unsupported.filter(claim=>finalProductText.includes(claim));if(remaining.length)throw new FactCheckError(`事实检查未通过：产品段仍包含未获支持的信息“${remaining.join("”、“")}”`);verification=await ai.verifyCopy(context,productFactDraft(draft));factIssues=verification.fact_safe?[]:(verification.fact_issues.length?verification.fact_issues:["产品方案段存在与锁定资料不一致的内容"])}
   if(sensitive.length)throw new FactCheckError(`事实检查未通过：${sensitive.join("；")}`);
   if(issues.length)return json({code:"COPY_QUALITY_FAILED",error:`文案完整性检查未通过：${issues.join("；")}`},{status:422});
   if(factIssues.length)throw new FactCheckError(`事实检查未通过：${factIssues.join("；")}`);
-  verification={...verification,fact_safe:true};
+  verification={...verification,fact_safe:true,fact_issues:manualReviewWarnings(draft)};
   const id=crypto.randomUUID(),now=new Date().toISOString(),topicMeta={inspiration:inspiration||{angleType:"custom",title:topic,sources:[]}};
   const productSnapshot={id:product.id,name:product.name,facts,analysis:parseJson(product.ai_analysis,{})};
   await db().prepare("INSERT INTO contents (id,user_id,product_id,topic_title,topic_meta,source_input,sales_intensity,status,product_snapshot,fingerprint,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,user.userId,product.id,topic,JSON.stringify(topicMeta),topic,1,"draft",JSON.stringify(productSnapshot),JSON.stringify({countries:inspiration?[inspiration.country]:[],theme:topic,product:product.id,contentTypes:[inspiration?.angleType||"custom"]}),now,now).run();

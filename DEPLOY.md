@@ -1,6 +1,6 @@
 # 正式版部署与维护
 
-线上地址：**https://travel-copy-assistant.app.workbuddy.host/**
+线上地址：**https://travel-copy-assistant-70608.app.workbuddy.host/**
 
 这份文档说明：怎么改代码、怎么发布、数据放在哪、出问题怎么查。
 （本文档写于从「Cloudflare Worker 本地测试版」迁移到「Node 正式版」之后。）
@@ -81,12 +81,13 @@ BASE_URL=https://travel-copy-assistant.app.workbuddy.host node scripts/smoke-tes
 ## 5. 数据在哪
 
 ```
-.data/app.db        SQLite 数据库（产品、事实、内容、版本、风格、素材记录）
-.data/objects/      上传的图片文件（按 <用户键>/<类型>/<id>-<文件名> 分目录）
+~/.europe-travel-copy-data/app.db        SQLite 数据库（产品、事实、内容、版本、风格、素材记录）
+~/.europe-travel-copy-data/objects/      上传的图片文件（按 <用户键>/<类型>/<id>-<文件名> 分目录）
 ```
 
-- `.data/` 已加入 `.gitignore`，**不会随发布上传**。
-- **重新发布不会清空线上数据**（已实测：发布前后产品列表完全保留）。
+- 正式环境的数据在应用源码目录之外，发布替换源码时不会覆盖；本地开发仍使用项目内的 `.data/`。
+- 如平台提供专用持久卷，可设置绝对路径 `DATA_DIR`，数据库和素材会统一写入该目录。
+- 新版第一次启动时，如果旧发布目录仍有 `.data/app.db`，会自动迁移数据库和素材；已有持久库不会被覆盖。
 - 首次启动会自动按 `drizzle/*.sql` 顺序建表，已应用的记在 `_migrations` 表里，不会重放。
 - 数据空间按邮箱隔离：白名单里每个邮箱各有一套产品/内容/素材，互相看不到。
 
@@ -96,7 +97,7 @@ BASE_URL=https://travel-copy-assistant.app.workbuddy.host node scripts/smoke-tes
 
 ```bash
 # 在应用沙箱内
-cp .data/app.db backup-$(date +%F).db
+cp ~/.europe-travel-copy-data/app.db backup-$(date +%F).db
 ```
 
 目前**没有**内置的导出/导入界面。如果担心数据，建议定期让助手帮忙做一次
@@ -120,6 +121,6 @@ cp .data/app.db backup-$(date +%F).db
 - **素材文件夹最多 6 层**；删除非空文件夹时会先确认，确认后子文件夹一并删除，
   里面的图片移到「未分类」保留（不会删文件）。
 - **删除素材**会同时删掉存储里的文件；如果这张图已经被某条内容的故事板用了，素材卡片上会先提示。
-- **数据在沙箱文件系统内**：能用、能跨发布保留，但不是托管数据库；重要数据请定期备份。
+- **数据仍在主机文件系统内**：能跨源码发布保留，但不是托管数据库；如果平台销毁整台运行主机仍可能丢失，重要数据请定期备份。
 - **门禁的安全性上限**：邮箱不是秘密，它防的是「误入」，不是「恶意冒充」。要真正防冒充需换成邮箱验证码或平台登录。
 - 门禁 cookie 有效期 30 天，签名用 `ACCESS_SECRET`；**换掉这个值会让所有人需要重新登录**。

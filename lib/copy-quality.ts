@@ -1,7 +1,25 @@
-import type { Draft } from "./ai/types";
+import type { Draft, DraftBlock } from "./ai/types";
 import { blocksToText } from "./content";
 
 const visualPattern=/\p{Extended_Pictographic}|[✅【】]/gu;
+
+export function isProductFactBlock(block:DraftBlock):boolean{
+  return block.category==="objective_fact"||block.category==="marketing";
+}
+
+/** 只有产品方案段参与与锁定资料的一致性核验。 */
+export function productFactDraft(draft:Draft):Draft{
+  return{blocks:draft.blocks.filter(isProductFactBlock)};
+}
+
+/** 知识/灵感段不拦截生成，但逐段提示用户发布前人工复查。 */
+export function manualReviewWarnings(draft:Draft):string[]{
+  return draft.blocks.flatMap((block,index)=>{
+    if(isProductFactBlock(block))return[];
+    const text=block.text.replace(/\s+/g," ").trim(),excerpt=text.slice(0,34);
+    return excerpt?[`第${index+1}段“${excerpt}${text.length>34?"…":""}”属于产品资料之外的知识内容，系统未作事实核验，发布前建议自行检查地名、历史背景、文化和旅游常识。`]:[];
+  });
+}
 
 /** 分散补足或移除装饰符号，不改正文；锁定段落可排除在自动整理之外。 */
 export function normalizeVisualSymbols(draft:Draft,protectedIds:string[]=[],min=5,max=9):Draft{
@@ -32,7 +50,7 @@ export function copyQualityIssues(draft:Draft){
   if(length<300||length>500)issues.push(`全文应为300-500字，当前约${length}字`);
   if(visualCount<5||visualCount>9)issues.push(`Emoji或视觉符号应为5-9个，当前约${visualCount}个`);
   if(draft.blocks.length<5||draft.blocks.length>8)issues.push("全文应分为5-8个完整段落");
-  const productIndex=draft.blocks.findIndex(block=>block.category==="objective_fact"||block.category==="marketing");
+  const productIndex=draft.blocks.findIndex(isProductFactBlock);
   if(productIndex<2)issues.push("前半段知识分享不足，产品内容出现过早");
   if(productIndex<0||!draft.blocks.slice(productIndex).some(block=>block.category==="objective_fact"||block.category==="marketing"))issues.push("缺少自然衔接的产品方案段落");
   const ending=draft.blocks.at(-1)?.text.trim()||"";
