@@ -193,7 +193,7 @@ html,body{max-width:100%;overflow-x:hidden}.mobile-editor-bar{display:none}.sele
 .moments-body{min-width:0}
 .moments-name{display:block;color:#3d6ca8;font-size:15px;font-weight:700}
 .moments-text{margin-top:5px}
-.moments-text p{margin:0 0 6px;color:#1b1f22;font-size:15px;line-height:1.62;overflow-wrap:anywhere}
+.moments-text p{margin:0 0 6px;color:#1b1f22;font-size:15px;line-height:1.62;overflow-wrap:anywhere;white-space:pre-line}
 .moments-text p:last-child{margin-bottom:0}
 .moments-empty{color:#8ba2ab}
 .moments-images{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:10px;max-width:330px}

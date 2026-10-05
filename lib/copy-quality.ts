@@ -3,14 +3,14 @@ import { blocksToText } from "./content";
 
 const visualPattern=/\p{Extended_Pictographic}|[✅【】]/gu;
 
-/** 字数建议区间：偏离只会提示，不拦截生成。 */
-export const LENGTH_ADVISED:[number,number]=[300,500];
+/** 字数建议区间：覆盖用户给的短句示例（207-267 非空白字符）。偏离只会提示，不拦截生成。 */
+export const LENGTH_ADVISED:[number,number]=[200,340];
 /** 字数硬性区间：比建议区间宽，避免模型数不准中文字符时把可用文案直接判死。 */
-export const LENGTH_HARD:[number,number]=[280,620];
-/** Emoji/视觉符号的建议区间（只提示）与硬性区间（才拦截）。上限放宽，允许更活泼的表达。 */
-export const SYMBOL_ADVISED:[number,number]=[8,12];
-export const SYMBOL_HARD:[number,number]=[5,14];
-/** 自动补足的目标数量：模型写得偏少时补到这里，再少也不低于 SYMBOL_ADVISED 下限。 */
+export const LENGTH_HARD:[number,number]=[190,480];
+/** Emoji/视觉符号的建议区间（只提示）与硬性区间（才拦截）。示例用量 6-11，主要做行首标记。 */
+export const SYMBOL_ADVISED:[number,number]=[6,14];
+export const SYMBOL_HARD:[number,number]=[5,16];
+/** 自动补足的目标数量：模型写得偏少时补到这里。 */
 export const SYMBOL_TARGET=10;
 
 export function isProductFactBlock(block:DraftBlock):boolean{
@@ -111,6 +111,8 @@ export function normalizeVisualSymbols(draft:Draft,protectedIds:string[]=[],min=
     blocks[index].text=`${blocks[index].text}${suffixes[count%suffixes.length]}`;
     count+=1;
   }
+  // 移除行首符号后可能留下悬空空格（"🌇 文案" → " 文案"），统一清掉每行行首空白。
+  for(const block of blocks)block.text=block.text.replace(/^[ \t]+/gm,"");
   return{blocks};
 }
 
@@ -124,7 +126,8 @@ export function copyQualityIssues(draft:Draft){
   // Emoji 上限放宽到 14：先用 normalizeVisualSymbols 自动整理，这里只在极端情况下兜底。
   const [symbolMin,symbolMax]=SYMBOL_HARD;
   if(visualCount<symbolMin||visualCount>symbolMax)issues.push(`Emoji或视觉符号应为${symbolMin}-${symbolMax}个，当前约${visualCount}个（建议${SYMBOL_ADVISED[0]}-${SYMBOL_ADVISED[1]}个）`);
-  if(draft.blocks.length<5||draft.blocks.length>8)issues.push("全文应分为5-8个完整段落");
+  // 短句分行风格下，模型可能一段一行，段数上限相应放宽。
+  if(draft.blocks.length<4||draft.blocks.length>14)issues.push("全文应分为4-14个段落");
   const productIndex=draft.blocks.findIndex(isProductFactBlock);
   if(productIndex<2)issues.push("前半段知识分享不足，产品内容出现过早");
   if(productIndex<0||!draft.blocks.slice(productIndex).some(block=>block.category==="objective_fact"||block.category==="marketing"))issues.push("缺少自然衔接的产品方案段落");
