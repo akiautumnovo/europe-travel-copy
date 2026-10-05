@@ -27,11 +27,11 @@ const readableItemSchema = z.preprocess((value) => {
 }, z.string().min(1));
 
 export const analysisResultSchema = z.object({
-  hard_facts: z.array(hardFactSchema),
-  subjective_claims: z.array(readableItemSchema),
-  uncertain_items: z.array(readableItemSchema),
-  product_summary: z.string(),
-  possible_content_angles: z.array(readableItemSchema),
+  hard_facts: z.array(hardFactSchema).default([]),
+  subjective_claims: z.array(readableItemSchema).default([]),
+  uncertain_items: z.array(readableItemSchema).default([]),
+  product_summary: z.string().default(""),
+  possible_content_angles: z.array(readableItemSchema).default([]),
 });
 
 export type AnalysisResult = z.infer<typeof analysisResultSchema>;
@@ -55,11 +55,13 @@ export type DraftBlock = z.infer<typeof blockSchema>;
 export type Draft = z.infer<typeof draftSchema>;
 export type Verification = z.infer<typeof verificationSchema>;
 export type LockedFact = { field:string; value:string; source_quote?:string };
-export type GenerationContext = { topic:string; facts:LockedFact[]; salesIntensity:0|1|2; stylePreferences:string[] };
+export type GenerationSource = { title:string; content:string; institution:string; url?:string };
+export type GenerationContext = { topic:string; facts:LockedFact[]; salesIntensity:0|1|2; stylePreferences:string[]; angleType?:"culture"|"history"|"resources"|"current"|"custom"; sources?:GenerationSource[] };
 export type RevisionInput = GenerationContext & { blocks:DraftBlock[]; lockedBlockIds:string[]; instruction:string; targetBlockId?:string };
-export const inspirationDraftSchema=z.object({topics:z.array(z.object({title:z.string().min(4).refine(value=>(value.match(/[\u4e00-\u9fff]/g)||[]).length>=4,"标题必须为中文"),city:z.string().min(1),country:z.string().min(1),flag:z.string().min(1),reason:z.string().min(4),audience:z.string().min(2),content_type:z.string().min(2),source_index:z.number().int().min(0).nullable()})).length(4)});
+export const inspirationAngleSchema=z.enum(["culture","history","resources","current"]);
+export const inspirationDraftSchema=z.object({topics:z.array(z.object({title:z.string().min(4).refine(value=>(value.match(/[\u4e00-\u9fff]/g)||[]).length>=4,"标题必须为中文"),city:z.string().min(1),country:z.string().min(1),flag:z.string().min(1),reason:z.string().min(4),audience:z.string().min(2),content_type:z.string().min(2),angle_type:inspirationAngleSchema,source_index:z.number().int().min(0).nullable()})).length(4)});
 export type InspirationDraft=z.infer<typeof inspirationDraftSchema>;
-export type InspirationGenerationInput={sourceSummaries:Array<{title:string;content:string;institution:string}>;previousTitles:string[];recentCountries:string[];productName?:string;refreshNo:number;candidateCities:Array<{country:string;flag:string;city:string;scene:string}>;retryHint?:string};
+export type InspirationGenerationInput={productId:string;productName:string;facts:LockedFact[];productSummary:string;sourceSummaries:Array<{title:string;content:string;institution:string}>;previousTitles:string[];refreshNo:number;retryHint?:string};
 const storyboardRoleSchema=z.preprocess(value=>{if(!value||typeof value!=="object")return value;const item=value as Record<string,unknown>;return{id:item.id,label:item.label,description:item.description,searchTheme:item.searchTheme??item.search_theme??item.theme}},z.object({id:z.string().min(1),label:z.string().min(1),description:z.string().min(1),searchTheme:z.string().min(1)}));
 const storyboardThemeSchema=z.preprocess(value=>{if(!value||typeof value!=="object")return value;const item=value as Record<string,unknown>;return{label:item.label??item.name,query:item.query??item.search_query??item.searchQuery}},z.object({label:z.string().min(1),query:z.string().min(1)}));
 export const storyboardSchema=z.preprocess(value=>{if(!value||typeof value!=="object")return value;const item=value as Record<string,unknown>;return{roles:item.roles??item.visual_roles??item.visualRoles,searchThemes:item.searchThemes??item.search_themes??item.themes}},z.object({roles:z.array(storyboardRoleSchema).min(1).max(12),searchThemes:z.array(storyboardThemeSchema).min(1).max(12)})).transform(value=>({roles:value.roles.slice(0,9),searchThemes:value.searchThemes.slice(0,6)}));

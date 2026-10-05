@@ -215,3 +215,6 @@ html,body{max-width:100%;overflow-x:hidden}.mobile-editor-bar{display:none}.sele
  .moments-shell{max-height:94vh;padding:20px 17px calc(20px + env(safe-area-inset-bottom));border-radius:22px 22px 0 0}
  .moments-actions{display:grid;grid-template-columns:1fr 1fr}
 }
+
+.product-card-actions{display:flex;align-items:center;gap:8px}
+@media(max-width:700px){.product-card-actions{grid-column:2;justify-self:start;flex-wrap:wrap}}

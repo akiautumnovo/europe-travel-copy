@@ -1,7 +1,7 @@
 /**
  * 端到端验证脚本（本地和线上都能跑）。
  *
- * 覆盖：邮箱门禁 → 建产品 → AI 解析 → 批量确认事实 → 三方向生成 → 版本详情 →
+ * 覆盖：邮箱门禁 → 建产品 → AI 解析 → 批量确认事实 → 产品灵感 → 单篇生成 → 版本详情 →
  *       改稿 → 采用 → 故事板 → 图库搜索 → 事实核验 → 灵感刷新 →
  *       素材上传/读回/去重 → 风险标记 → 删除内容/产品。
  *
@@ -40,6 +40,8 @@ const api = async (url, init = {}) => {
   try { data = JSON.parse(text); } catch { data = text; }
   return { status: r.status, data };
 };
+const bootstrapped = await api("/api/bootstrap", { method: "POST" });
+check("初始化用户数据", bootstrapped.status === 200, `HTTP ${bootstrapped.status}`);
 
 console.log("=== 1. 建产品 + AI 解析 ===");
 const created = await api("/api/products", {
@@ -63,14 +65,19 @@ const confirmed = await api(`/api/products/${productId}/confirm-analysis`, {
 check("锁定事实", confirmed.status === 200, `lockedFacts=${confirmed.data.lockedFacts?.length}`);
 check("产品列表读回事实数", (await api("/api/products")).data.find((p) => p.id === productId)?.lockedFactCount > 0);
 
-console.log("=== 3. 三方向生成（事务批量插入版本）===");
-const generation = await api("/api/generation/strategies", {
+console.log("=== 3. 产品灵感 + 单篇生成 ===");
+const inspiration = await api(`/api/inspiration/today?productId=${productId}`);
+const angleTypes = inspiration.data.topics?.map((topic) => topic.angleType).sort() ?? [];
+check("四类产品灵感", inspiration.status === 200 && angleTypes.join(",") === "culture,current,history,resources", angleTypes.join(" / "));
+check("灵感绑定当前产品", inspiration.data.topics?.every((topic) => topic.productId === productId), `${inspiration.data.topics?.length || 0} 条`);
+const selectedInspiration = inspiration.data.topics?.find((topic) => topic.angleType !== "current") || inspiration.data.topics?.[0];
+const generation = await api("/api/generation/copy", {
   method: "POST",
-  body: JSON.stringify({ productId, topic: "第一次去瑞士为什么不要每天换酒店", salesIntensity: 1 }),
+  body: JSON.stringify({ productId, inspirationId: selectedInspiration?.id }),
 });
-check("生成三个方向", generation.status === 201, generation.status === 201 ? `${generation.data.candidates.length} 个方向` : JSON.stringify(generation.data).slice(0, 160));
+check("生成单篇文案", generation.status === 201, generation.status === 201 ? `V${generation.data.versionNo}` : JSON.stringify(generation.data).slice(0, 160));
 const contentId = generation.data.contentId;
-check("latestVersionNo 与入库一致", generation.data.latestVersionNo === generation.data.candidates?.length, `latestVersionNo=${generation.data.latestVersionNo}`);
+check("仅保存一个初始版本", generation.data.versionNo === 1 && Array.isArray(generation.data.draft?.blocks), `versionNo=${generation.data.versionNo}`);
 
 console.log("=== 4. 详情 + 版本列表（all().results 路径）===");
 const detail = await api(`/api/contents/${contentId}`);
@@ -83,12 +90,12 @@ check("版本里的段落可解析", Array.isArray(baseBlocks) && baseBlocks.len
 console.log("=== 5. 改稿 + 采用 ===");
 const revise = await api(`/api/contents/${contentId}/revise`, {
   method: "POST",
-  body: JSON.stringify({ versionNo: generation.data.latestVersionNo, blocks: baseBlocks, lockedBlockIds: [], instruction: "销售味再弱一点" }),
+  body: JSON.stringify({ versionNo: generation.data.versionNo, blocks: baseBlocks, lockedBlockIds: [], instruction: "保持完整结构，把表达改得更自然一些" }),
 });
 check("快捷改稿", revise.status === 200, revise.status === 200 ? `V${revise.data.versionNo}` : JSON.stringify(revise.data).slice(0, 160));
 const adopt = await api(`/api/contents/${contentId}/adopt`, {
   method: "POST",
-  body: JSON.stringify({ versionNo: revise.data?.versionNo || generation.data.latestVersionNo, blocks: revise.data?.blocks ?? baseBlocks, lockedBlockIds: [] }),
+  body: JSON.stringify({ versionNo: revise.data?.versionNo || generation.data.versionNo, blocks: revise.data?.blocks ?? baseBlocks, lockedBlockIds: [] }),
 });
 check("采用此版", adopt.status === 200, adopt.status === 200 ? `styleLearned=${adopt.data.styleLearned}` : JSON.stringify(adopt.data).slice(0, 160));
 
@@ -101,8 +108,8 @@ const verify = await api("/api/facts/verify", { method: "POST", body: JSON.strin
 check("事实核验（走搜索链路）", verify.status === 200, `来源 ${verify.data.sources?.length} 条 / ${verify.data.status}`);
 
 console.log("=== 7. 灵感刷新 ===");
-const refresh = await api("/api/inspiration/refresh", { method: "POST" });
-check("换一组推荐", refresh.status === 200 && refresh.data.topics?.length === 4, refresh.data.topics?.map((t) => t.flag + t.city).join(" "));
+const refresh = await api("/api/inspiration/refresh", { method: "POST", body: JSON.stringify({ productId }) });
+check("换一组产品灵感", refresh.status === 200 && refresh.data.topics?.length === 4, refresh.data.topics?.map((t) => t.contentType).join(" / "));
 
 console.log("=== 8. 素材上传 / 读回 / 去重（本地文件存储）===");
 const png = Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c6360000002000154a24f5f0000000049454e44ae426082", "hex");
