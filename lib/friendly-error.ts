@@ -11,7 +11,7 @@ export function friendlyError(message:string|undefined,fallback:string){
 }
 
 export function friendlyApiError(input:{error?:string;code?:string}|undefined,fallback:string){
- if(input?.code==="FACT_CHECK_FAILED")return input.error||"文案包含未确认的日期、价格或其他关键事实，请检查产品事实后重试。";
+ if(input?.code==="FACT_CHECK_FAILED")return input.error||"文案里有与基本常识明显不符的说法，请检查后重试。价格、日期等数据请对照页面上的「已锁定产品事实」自行核对。";
  if(input?.code==="COPY_QUALITY_FAILED")return input.error||"文案完整性检查未通过，请换一个角度后重试。";
  if(input?.code==="AI_GENERATION_FAILED"||input?.code==="BAD_GATEWAY_RESPONSE")return input.error||fallback;
  if(input?.code==="SEARCH_UNAVAILABLE")return "当前无法联网核验，这条事实暂时不会写入文案。";

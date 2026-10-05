@@ -34,6 +34,17 @@ export function lengthWarnings(draft:Draft):string[]{
   return[];
 }
 
+/**
+ * 数据类内容（价格、日期、天数、住宿、航班、名额、签证、退改…）。
+ * 按当前策略，这类内容不再由系统判定对错，改为在生成页展示「已锁定产品事实」，由用户对照自行核对。
+ */
+const dataClaimPattern=/价格|费用|团费|报价|单价|房差|差额|金额|日期|出发|班期|天数|住宿|酒店|星级|航班|航线|名额|席位|余位|签证|保险|退改|退款|欧元|人民币|瑞郎|元|[¥￥€$]/;
+
+/** 只保留常识类核验问题；数据类问题不阻断生成，避免把可用文案判死。 */
+export function commonSenseFactIssues(issues:string[]):string[]{
+  return issues.filter(issue=>!dataClaimPattern.test(issue));
+}
+
 /** 发布前的人工复查提醒：事实来源与字数，均为提示、不拦截。 */
 export function reviewWarnings(draft:Draft):string[]{
   return[...lengthWarnings(draft),...manualReviewWarnings(draft)];

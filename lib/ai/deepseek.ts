@@ -65,9 +65,10 @@ export class DeepSeekProvider implements AIProvider {
     return { blocks: result.blocks.map(b=>({ ...b, category: byId.get(b.id) ?? b.category })) };
   }
   async verifyCopy(input: GenerationContext, draft: Draft, baseline?: Draft): Promise<Verification> {
-    const revisionRule=baseline?`这是修改后的文案。只检查相对原稿新增或改变的事实性陈述；原稿中逐字保留的陈述不是本次修改新增事实。若本次只调整语气、结构或长度且未引入新事实，fact_safe 必须为 true。\n修改前原稿：${JSON.stringify(baseline.blocks)}`:"这是初稿。产品价格、日期、天数、产品行程地点、酒店、航班、名额必须来自锁定事实；稳定且广为人知的人文、历史与旅游常识可以保留，但不得编造精确年代、数字或近期变化。近期信息只能来自可靠来源。";
+    const revisionRule=baseline?`这是修改后的文案。只检查相对原稿新增或改变的常识性错误；原稿中逐字保留的陈述不是本次修改新增内容。若本次只调整语气、结构或长度且未引入新的常识性错误，fact_safe 必须为 true。\n修改前原稿：${JSON.stringify(baseline.blocks)}`:"这是初稿。只核查常识层面：地理、历史、文化、季节、交通等基本常识是否明显错误，是否出现常识性矛盾或并不存在的说法，是否编造精确年代或近期变化。";
     return this.callJson(`核验朋友圈。只返回 JSON：{"fact_safe":true,"fact_issues":[],"naturalness_issues":[]}。
 ${revisionRule}
+【重要】你只负责核查基本常识。价格、费用、日期、出发时间、行程天数、住宿与酒店星级、航班、名额、签证、退改等数据类内容，一律不要写进 fact_issues——这些由用户对照页面上的「已锁定产品事实」自行核对。锁定事实只用于让你理解上下文，不需要逐条比对。
 检查套路开头、连续问句、空洞形容词、机械CTA、虚构第一人称/客户经历/销售数据、从业身份信息，以及残句、突然截断、前后段过渡生硬、产品事实堆砌。完整但有吸引力的标题和适量 Emoji 不应判为不自然。
 锁定事实：${JSON.stringify(input.facts)}\n可靠来源：${JSON.stringify(input.sources||[])}\n待核验文案：${JSON.stringify(draft.blocks)}`, verificationSchema);
   }

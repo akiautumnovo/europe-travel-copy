@@ -1,33 +1,13 @@
 import { getAIProvider } from "../../../../lib/ai";
 import { blocksToText, normalizeFacts } from "../../../../lib/content";
+import { commonSenseFactIssues } from "../../../../lib/copy-quality";
 import type { GenerationContext } from "../../../../lib/ai/types";
 import { labels } from "../../../../lib/style";
 import { db, json, requireApiUser } from "../../_shared";
 
+// 策略调整：系统只拦「常识类」问题。价格、日期、天数、住宿、航班、名额等数据类内容不再由系统判定对错，
+// 改由生成页展示「已锁定产品事实」，用户自行比对判断（见 lib/copy-quality.ts 的 commonSenseFactIssues）。
 class FactCheckError extends Error{}
-// 千分位逗号只是书写习惯：把 "5,999" 归一到 "5999"，否则与事实里的 "5999" 比对会误报。
-const digits=(value:string):string[]=>(value.match(/\d+(?:[.,]\d+)?/g)||[]).map(number=>number.replace(/,/g,""));
-function unsupportedSensitiveClaims(text:string,facts:GenerationContext["facts"]){
- // 事实的 field 由 AI 生成、命名并不固定（“单房差”“房费”“报价”…），按关键词匹配字段会把已锁定的事实误判成无据。
- // 星级声称按“星级本身”比对：事实写四星，文案就不能写五星；其余含数字的声称只要有任一事实的数值覆盖该数字即算有据。
- const rules=[
-  {label:"价格",pattern:/(?:¥|￥|€|\$)\s?\d[\d,.]*|\d[\d,.]*\s?(?:元|欧元|人民币)/gi},
-  {label:"日期",pattern:/\d{4}[年/-]\d{1,2}(?:[月/-]\d{1,2}日?)?|\d{1,2}月\d{1,2}日/gi},
-  {label:"行程天数",pattern:/(?:全程|整个行程|行程(?:共|总计|合计)?|共计|总共|为期)\s*\d+\s?(?:天|日)(?:\s*\d+\s?晚)?/gi},
-  {label:"酒店等级",pattern:/(?:[四五六]|[4-6])星(?:级)?酒店/gi},
-  {label:"剩余名额",pattern:/(?:仅剩|剩余|余)\s*\d+\s?(?:席|位|个名额)/gi},
-  {label:"航班",pattern:/\b[A-Z]{2}\s?\d{3,4}\b/g},
- ];
- const starLevel=(value:string)=>{const match=value.match(/([四五六]|[4-6])\s*星/);return match?match[1].replace("4","四").replace("5","五").replace("6","六"):null};
- const covered=(claim:string)=>{
-  const level=starLevel(claim);
-  if(level)return facts.some(f=>starLevel(f.value)===level);
-  const claimDigits=digits(claim);
-  if(claimDigits.length)return facts.some(f=>claimDigits.every(n=>digits(f.value).includes(n)));
-  return facts.some(f=>f.value.replace(/级/g,"").includes(claim.replace(/级/g,"").trim()));
- };
- return [...new Set(rules.flatMap(rule=>(text.match(rule.pattern)||[]).filter(claim=>!covered(claim)).map(claim=>`${rule.label}“${claim}”没有对应的已确认事实`)))];
-}
 
 export async function POST(request:Request){
   const user=await requireApiUser(request);
@@ -53,11 +33,9 @@ export async function POST(request:Request){
           if(recheck.fact_safe){current=polished;verification={...recheck,fact_issues:recheck.fact_issues};}
         }catch{/* 润色是增益步骤，任何失败都静默回退原稿 */}
       }
-      const criticalIssues=unsupportedSensitiveClaims(blocksToText(current.blocks),facts);
-      if(criticalIssues.length)throw new FactCheckError(`事实检查未通过：${criticalIssues.join("；")}`);
-      // AI 核验明确判定不安全时必须阻断。不能只把问题作为提示展示后又把 fact_safe 强制改成 true，
-      // 否则正则没有覆盖到的地点、政策、交通等虚构事实仍会进入可采用的候选稿。
-      if(!verification.fact_safe)throw new FactCheckError(`事实检查未通过：${verification.fact_issues.join("；")||"文案包含无法由已确认资料支持的事实"}`);
+      // 只拦常识类问题；数据类内容（价格、日期、天数、住宿、航班、名额等）不再由系统判定，交给用户对照锁定事实自行核对。
+      const commonIssues=verification.fact_safe?[]:commonSenseFactIssues(verification.fact_issues);
+      if(commonIssues.length)throw new FactCheckError(`常识检查未通过：${commonIssues.join("；")}`);
       return{strategy,draft:current,verification};
     }));
     const candidates=settled.flatMap(result=>result.status==="fulfilled"?[result.value]:[]);
