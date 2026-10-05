@@ -56,6 +56,14 @@ const analysis = await api("/api/analysis", { method: "POST", body: JSON.stringi
 const facts = analysis.data.analysis?.hard_facts ?? [];
 check("AI 解析", analysis.status === 200 && facts.length > 0, `${facts.length} 条硬事实`);
 check("千分位价格识别", facts.some((f) => String(f.value).includes("15,800") || String(f.value).includes("15800")), facts.find((f) => /15,?800/.test(String(f.value)))?.value ?? "未识别");
+const draftAnalysis = await api(`/api/products/${productId}/analysis-draft`, {
+  method: "POST",
+  body: JSON.stringify({ type: "official_product", rawText, analysis: analysis.data.analysis }),
+});
+check("待确认分析自动暂存", draftAnalysis.status === 200);
+const pendingDetail = await api(`/api/products/${productId}`);
+check("重新进入可恢复待确认事实", pendingDetail.status === 200 && pendingDetail.data.rawContent === rawText && pendingDetail.data.analysis?.hard_facts?.length === facts.length);
+check("暂存不会提前锁定事实", pendingDetail.data.facts?.length === 0);
 
 console.log("=== 2. 事实保存（走 batch 事务）===");
 const confirmed = await api(`/api/products/${productId}/confirm-analysis`, {

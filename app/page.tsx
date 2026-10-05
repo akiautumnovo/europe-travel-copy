@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Clock3, ExternalLink, FileUp, Image as ImageIcon, Layers3, Lightbulb, LoaderCircle, LogOut, Package, Plus, RefreshCw, Send, ShieldCheck, Sparkles, Trash2, UserRound, WandSparkles, X } from "lucide-react";
 import AnalysisWorkspace from "./analysis-workspace";
 import CreationWorkspace from "./creation-workspace";
@@ -21,7 +21,7 @@ const navItems: { id: MainView; label: string; icon: typeof Lightbulb }[] = [
 export default function Home() {
   const [view, setView] = useState<View>("inspiration");
   const [toast, setToast] = useState("");
-  const [analysisText, setAnalysisText] = useState("");
+  const [analysisText, setAnalysisText] = useState(""),[analysisProductId,setAnalysisProductId]=useState("");
   const [creationTopic,setCreationTopic]=useState(""),[creationInspirationId,setCreationInspirationId]=useState(""),[resumeContentId,setResumeContentId]=useState(""),[creationProductId,setCreationProductId]=useState("");
   const [access,setAccess]=useState<{state:"checking"}|{state:"granted";name:string}|{state:"gate";gateEnabled:boolean;signedInEmail:string|null}>({state:"checking"});
   const [gateEmail,setGateEmail]=useState(""),[gateBusy,setGateBusy]=useState(false),[gateError,setGateError]=useState(""),[accountOpen,setAccountOpen]=useState(false);
@@ -81,8 +81,8 @@ export default function Home() {
       <div className="phase-note"><span>MVP</span><p>完整创作闭环</p></div>
     </aside>
     <main className="main-content">
-      {view === "inspiration" && <Inspiration preferredProductId={creationProductId} onGenerate={(topic,productId,inspirationId) => {setCreationTopic(topic);setCreationInspirationId(inspirationId);setResumeContentId("");setCreationProductId(productId);setView("creation")}} onCustom={(productId)=>{setCreationProductId(productId);setCreationTopic("");setCreationInspirationId("");setResumeContentId("");setView("creation")}} onAnalyze={(value)=>{setAnalysisText(value);setView("analysis")}} onMock={flash}/>} {view === "products" && <Products onMock={flash} onUseProduct={(id)=>{setCreationProductId(id);setCreationInspirationId("");setView("inspiration")}}/>} {view === "assets" && <AssetLibrary notify={flash}/>} {view === "style" && <StyleDNA notify={flash}/>} {view === "history" && <History notify={flash} onOpen={(id)=>{setResumeContentId(id);setCreationTopic("");setCreationInspirationId("");setCreationProductId("");setView("creation")}}/>}
-      {view === "analysis" && <AnalysisWorkspace initialText={analysisText} onBack={()=>setView("inspiration")} onContinue={(productId)=>{setCreationProductId(productId);setCreationTopic("");setResumeContentId("");setView("creation")}} notify={flash}/>}
+      {view === "inspiration" && <Inspiration preferredProductId={creationProductId} onGenerate={(topic,productId,inspirationId) => {setCreationTopic(topic);setCreationInspirationId(inspirationId);setResumeContentId("");setCreationProductId(productId);setView("creation")}} onCustom={(productId)=>{setCreationProductId(productId);setCreationTopic("");setCreationInspirationId("");setResumeContentId("");setView("creation")}} onAnalyze={(value)=>{setAnalysisProductId("");setAnalysisText(value);setView("analysis")}} onMock={flash}/>} {view === "products" && <Products onMock={flash} onUseProduct={(id)=>{setCreationProductId(id);setCreationInspirationId("");setView("inspiration")}} onEditFacts={(id,rawContent)=>{setAnalysisProductId(id);setAnalysisText(rawContent||"");setView("analysis")}} onAddFacts={()=>{setAnalysisProductId("");setAnalysisText("");setView("analysis")}}/>} {view === "assets" && <AssetLibrary notify={flash}/>} {view === "style" && <StyleDNA notify={flash}/>} {view === "history" && <History notify={flash} onOpen={(id)=>{setResumeContentId(id);setCreationTopic("");setCreationInspirationId("");setCreationProductId("");setView("creation")}}/>}
+      {view === "analysis" && <AnalysisWorkspace initialText={analysisText} initialProductId={analysisProductId||undefined} onBack={()=>setView(analysisProductId?"products":"inspiration")} onContinue={(productId)=>{setCreationProductId(productId);setCreationTopic("");setResumeContentId("");setView("inspiration")}} notify={flash}/>}
       {view === "creation" && <CreationWorkspace initialTopic={creationTopic} initialInspirationId={creationInspirationId||undefined} initialContentId={resumeContentId||undefined} initialProductId={creationProductId||undefined} onBack={()=>setView("inspiration")} notify={flash}/>}
     </main>
     <nav className="mobile-nav" aria-label="手机主导航">{navItems.map((item) => { const Icon = item.icon; return <button key={item.id} className={activeMain === item.id ? "active" : ""} onClick={() => setView(item.id)}><Icon size={21}/><span>{item.label}</span></button>; })}<button className={accountOpen ? "active" : ""} onClick={() => setAccountOpen(true)} aria-label={`账号：${access.name}`}><span className="nav-avatar">{accountShort.slice(0,1).toUpperCase()}</span><span>账号</span></button></nav>
@@ -113,7 +113,7 @@ function Inspiration({ preferredProductId,onGenerate,onCustom,onAnalyze,onMock }
   </div>;
 }
 
-type Product = { id:string; name:string; status:string; sourceType:string; sourceFilePath?:string; lockedFactCount?:number };
+type Product = { id:string; name:string; status:string; sourceType:string; sourceFilePath?:string; rawContent?:string; lockedFactCount?:number };
 /** 新建产品的唯一入口。原来页面上同时有"新建产品"按钮和常驻表单，两者重复。 */
 function NewProductDialog({busy,onCreate,onCancel}:{busy:boolean;onCreate:(name:string,status:string)=>void;onCancel:()=>void}) {
   const [name,setName]=useState(""),[status,setStatus]=useState("normal");
@@ -126,18 +126,16 @@ function NewProductDialog({busy,onCreate,onCancel}:{busy:boolean;onCreate:(name:
   </section></div>;
 }
 
-function Products({ onMock,onUseProduct }: { onMock: (s: string) => void;onUseProduct:(id:string)=>void }) {
-  const [items,setItems]=useState<Product[]>([]),[busy,setBusy]=useState(false),[showCreate,setShowCreate]=useState(false),[pendingDelete,setPendingDelete]=useState<Product|null>(null); const fileRef=useRef<HTMLInputElement>(null);
+function Products({ onMock,onUseProduct,onEditFacts,onAddFacts }: { onMock: (s: string) => void;onUseProduct:(id:string)=>void;onEditFacts:(id:string,rawContent?:string)=>void;onAddFacts:()=>void }) {
+  const [items,setItems]=useState<Product[]>([]),[busy,setBusy]=useState(false),[showCreate,setShowCreate]=useState(false),[pendingDelete,setPendingDelete]=useState<Product|null>(null);
   const load=async()=>{try{const r=await fetch("/api/products");if(!r.ok){onMock(await readApiError(r,"产品数据暂时无法读取"));return}setItems(await r.json() as Product[])}catch{onMock("产品数据暂时无法读取，请稍后重试")}};
   useEffect(()=>{void (async()=>{await load()})()},[]);
   async function create(nextName:string,nextStatus:string){setBusy(true);try{const r=await fetch("/api/products",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:nextName,status:nextStatus})});if(!r.ok){onMock(await readApiError(r,"保存失败，请重试"));return}setShowCreate(false);await load();onMock(`已创建“${nextName}”`)}catch{onMock("保存失败，请重试")}finally{setBusy(false)}}
   async function update(item:Product,patch:Partial<Product>){try{const r=await fetch(`/api/products/${item.id}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify(patch)});if(!r.ok){onMock(await readApiError(r,"产品更新失败"));return}await load();onMock("产品已更新")}catch{onMock("产品更新失败，请重试")}}
   async function remove(item:Product){try{const r=await fetch(`/api/products/${item.id}`,{method:"DELETE"});if(!r.ok){onMock(await readApiError(r,"删除失败"));return}await load();onMock("产品已删除")}catch{onMock("删除失败，请重试")}}
-  async function uploadSource(file:File){try{const form=new FormData();form.set("file",file);form.set("kind","source");const r=await fetch("/api/assets",{method:"POST",body:form});onMock(r.ok?"产品文件已存入素材库":await readApiError(r,"上传失败，请重试"))}catch{onMock("上传失败，请重试")}}
-  return <div className="page-wrap"><PageHeader kicker="产品库" title="你正在关注的产品" action={<div className="product-top-actions"><button className="secondary-button" onClick={()=>fileRef.current?.click()}><FileUp size={17}/>上传产品文件</button><button className="primary-button" onClick={()=>setShowCreate(true)}><Plus size={18}/>新建产品</button></div>}/>
-    <input ref={fileRef} hidden type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" onChange={e=>e.target.files?.[0]&&uploadSource(e.target.files[0])}/>
-    <p className="list-hint">产品文件最大支持 25MB。产品名称和状态可以直接在下面点开修改。想写哪个产品的内容，就去首页用产品选择器生成。</p>
-    <div className="product-list">{items.map((item,i)=><article className={item.status==="focus"?"product-card featured":"product-card"} key={item.id}><div className="product-country">{i%2?"🇮🇹":"🇨🇭"}</div><div className="product-info"><div><span className={item.status==="focus"?"status focus":"status"}>{item.status==="focus"?"主推":item.status==="paused"?"暂停":"普通"}</span><span className="muted">{(item.lockedFactCount||0)>0?`已确认 ${item.lockedFactCount} 条事实`:"尚未确认事实"}</span></div><input className="inline-name" aria-label="产品名称" value={item.name} onChange={e=>setItems(v=>v.map(p=>p.id===item.id?{...p,name:e.target.value}:p))} onBlur={()=>update(item,{name:item.name})}/><select className="inline-status" aria-label="产品状态" value={item.status} onChange={e=>update(item,{status:e.target.value})}><option value="focus">主推</option><option value="normal">普通</option><option value="paused">暂停</option></select></div><div className="product-card-actions"><button className="secondary-button" onClick={()=>onUseProduct(item.id)}>用它生成</button><button className="danger-button" aria-label="删除产品" onClick={()=>setPendingDelete(item)}><Trash2 size={18}/></button></div></article>)}</div>
+  return <div className="page-wrap"><PageHeader kicker="产品库" title="你正在关注的产品" action={<div className="product-top-actions"><button className="secondary-button" onClick={onAddFacts}><FileUp size={17}/>上传并确认产品资料</button><button className="primary-button" onClick={()=>setShowCreate(true)}><Plus size={18}/>新建产品</button></div>}/>
+    <p className="list-hint">产品资料最大支持 25MB。每个产品都可以随时重新解析、确认或修改事实。</p>
+    <div className="product-list">{items.map((item,i)=><article className={item.status==="focus"?"product-card featured":"product-card"} key={item.id}><div className="product-country">{i%2?"🇮🇹":"🇨🇭"}</div><div className="product-info"><div><span className={item.status==="focus"?"status focus":"status"}>{item.status==="focus"?"主推":item.status==="paused"?"暂停":"普通"}</span><span className="muted">{(item.lockedFactCount||0)>0?`已确认 ${item.lockedFactCount} 条事实`:"尚未确认事实"}</span></div><input className="inline-name" aria-label="产品名称" value={item.name} onChange={e=>setItems(v=>v.map(p=>p.id===item.id?{...p,name:e.target.value}:p))} onBlur={()=>update(item,{name:item.name})}/><select className="inline-status" aria-label="产品状态" value={item.status} onChange={e=>update(item,{status:e.target.value})}><option value="focus">主推</option><option value="normal">普通</option><option value="paused">暂停</option></select></div><div className="product-card-actions"><button className="secondary-button" onClick={()=>onEditFacts(item.id,item.rawContent)}>{(item.lockedFactCount||0)>0?"修改事实":"确认事实"}</button><button className="secondary-button" disabled={(item.lockedFactCount||0)===0} onClick={()=>onUseProduct(item.id)}>用它生成</button><button className="danger-button" aria-label="删除产品" onClick={()=>setPendingDelete(item)}><Trash2 size={18}/></button></div></article>)}</div>
     {items.length===0&&<div className="empty-hint"><Layers3 size={22}/><div><strong>还没有保存产品</strong><p>点右上角「新建产品」创建第一个产品。</p></div></div>}
     {showCreate&&<NewProductDialog busy={busy} onCreate={create} onCancel={()=>setShowCreate(false)}/>}
     {pendingDelete&&<ConfirmDialog title={`删除“${pendingDelete.name}”？`} description="该产品及其已确认事实会一起删除，且无法恢复。" onConfirm={()=>{const target=pendingDelete;setPendingDelete(null);void remove(target)}} onCancel={()=>setPendingDelete(null)}/>}
