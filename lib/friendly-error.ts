@@ -12,6 +12,8 @@ export function friendlyError(message:string|undefined,fallback:string){
 
 export function friendlyApiError(input:{error?:string;code?:string}|undefined,fallback:string){
  if(input?.code==="FACT_CHECK_FAILED")return input.error||"文案包含未确认的日期、价格或其他关键事实，请检查产品事实后重试。";
+ if(input?.code==="COPY_QUALITY_FAILED")return input.error||"文案完整性检查未通过，请换一个角度后重试。";
+ if(input?.code==="AI_GENERATION_FAILED"||input?.code==="BAD_GATEWAY_RESPONSE")return input.error||fallback;
  if(input?.code==="SEARCH_UNAVAILABLE")return "当前无法联网核验，这条事实暂时不会写入文案。";
  if(input?.code==="STORYBOARD_GENERATION_FAILED")return input.error||"视觉故事板生成暂时失败，请重试。当前文案和已选图片不会丢失。";
  if(input?.code==="UNAUTHORIZED")return "当前登录账号没有访问权限，请用授权账号登录后重试。";
