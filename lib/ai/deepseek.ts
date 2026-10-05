@@ -28,7 +28,7 @@ export class DeepSeekProvider implements AIProvider {
   async generateCopy(input: GenerationContext): Promise<Draft> {
     return this.callJson(`写一篇完整的欧洲旅行朋友圈，主题是“${input.topic}”。
 只返回 JSON：{"blocks":[{"id":"b1","text":"段落文字","category":"objective_fact|professional_advice|personal_experience|marketing|literary"}]}。
-每段一个 block，优先写成 6 段，全文控制在 400-460 个非空白字符（硬性范围 300-500 字，绝不能少于 300 字）。
+每段一个 block，优先写成 6 段，全文控制在 400-460 个非空白字符（建议范围 300-500 字，绝不能超过 500 字）。
 
 【像真人的写法】
 - 开头直接切入：从一个具体场景、一句吐槽或一个细节开始，禁止“最近很多朋友问我”“今天想和大家分享”这类开场
@@ -59,7 +59,7 @@ export class DeepSeekProvider implements AIProvider {
     const locked = input.blocks.filter(b=>input.lockedBlockIds.includes(b.id));
     const scope = input.targetBlockId ? `只允许修改 id=${input.targetBlockId} 的段落，其他段落逐字保留。` : "修改全文，但 lockedBlockIds 中的段落必须逐字保留。";
     const result = await this.callJson(`${scope}\n修改要求：${input.instruction}\n只返回与输入相同 id、相同顺序的 JSON blocks，每个 block 必须保留 id、text、category 三个字段，category 沿用输入的取值。禁止改变锁定事实，禁止编造经历或数据。
-改写后保持专业且有旅行博主式吸引力，句子和结尾必须完整；全文必须写到 410-470 个非空白字符，低于 350 字视为失败，并恰好使用 7 个 Emoji 或视觉符号（【与】分别计一个）。维持“前半段知识分享、自然过渡、后半段精选产品事实”的结构，前半段 category 只能用 literary 或 professional_advice，产品段 category 用 objective_fact 或 marketing。不得出现虚构亲历、职业身份或客户故事。
+改写后保持专业且有旅行博主式吸引力，句子和结尾必须完整；全文控制在 400-470 个非空白字符（建议 300-500 字，绝不能超过 500 字），并恰好使用 7 个 Emoji 或视觉符号（【与】分别计一个）。维持“前半段知识分享、自然过渡、后半段精选产品事实”的结构，前半段 category 只能用 literary 或 professional_advice，产品段 category 用 objective_fact 或 marketing。不得出现虚构亲历、职业身份或客户故事。
 锁定段落：${JSON.stringify(locked)}\n锁定事实：${JSON.stringify(input.facts)}\n可靠来源：${JSON.stringify(input.sources||[])}\n当前段落：${JSON.stringify(input.blocks)}`, lenientDraftSchema, { temperature: 0.75, system: WRITER_SYSTEM });
     const byId = new Map(input.blocks.map(b=>[b.id,b.category] as const));
     return { blocks: result.blocks.map(b=>({ ...b, category: byId.get(b.id) ?? b.category })) };

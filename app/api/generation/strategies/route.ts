@@ -8,15 +8,25 @@ class FactCheckError extends Error{}
 // 千分位逗号只是书写习惯：把 "5,999" 归一到 "5999"，否则与事实里的 "5999" 比对会误报。
 const digits=(value:string):string[]=>(value.match(/\d+(?:[.,]\d+)?/g)||[]).map(number=>number.replace(/,/g,""));
 function unsupportedSensitiveClaims(text:string,facts:GenerationContext["facts"]){
+ // 事实的 field 由 AI 生成、命名并不固定（“单房差”“房费”“报价”…），按关键词匹配字段会把已锁定的事实误判成无据。
+ // 星级声称按“星级本身”比对：事实写四星，文案就不能写五星；其余含数字的声称只要有任一事实的数值覆盖该数字即算有据。
  const rules=[
-  {label:"价格",field:/价格|费用|团费/,pattern:/(?:¥|￥|€|\$)\s?\d[\d,.]*|\d[\d,.]*\s?(?:元|欧元|人民币)/gi},
-  {label:"日期",field:/日期|出发|时间/,pattern:/\d{4}[年/-]\d{1,2}(?:[月/-]\d{1,2}日?)?|\d{1,2}月\d{1,2}日/gi},
-  {label:"行程天数",field:/天数|行程|时长/,pattern:/(?:全程|整个行程|行程(?:共|总计|合计)?|共计|总共|为期)\s*\d+\s?(?:天|日)(?:\s*\d+\s?晚)?/gi},
-  {label:"酒店等级",field:/酒店|住宿|星级/,pattern:/(?:[四五六]|[4-6])星(?:级)?酒店/gi},
-  {label:"剩余名额",field:/名额|席位|余位/,pattern:/(?:仅剩|剩余|余)\s*\d+\s?(?:席|位|个名额)/gi},
-  {label:"航班",field:/航班|航线/,pattern:/\b[A-Z]{2}\s?\d{3,4}\b/g},
+  {label:"价格",pattern:/(?:¥|￥|€|\$)\s?\d[\d,.]*|\d[\d,.]*\s?(?:元|欧元|人民币)/gi},
+  {label:"日期",pattern:/\d{4}[年/-]\d{1,2}(?:[月/-]\d{1,2}日?)?|\d{1,2}月\d{1,2}日/gi},
+  {label:"行程天数",pattern:/(?:全程|整个行程|行程(?:共|总计|合计)?|共计|总共|为期)\s*\d+\s?(?:天|日)(?:\s*\d+\s?晚)?/gi},
+  {label:"酒店等级",pattern:/(?:[四五六]|[4-6])星(?:级)?酒店/gi},
+  {label:"剩余名额",pattern:/(?:仅剩|剩余|余)\s*\d+\s?(?:席|位|个名额)/gi},
+  {label:"航班",pattern:/\b[A-Z]{2}\s?\d{3,4}\b/g},
  ];
- return [...new Set(rules.flatMap(rule=>(text.match(rule.pattern)||[]).filter(claim=>{const claimDigits=digits(claim);return !facts.some(f=>rule.field.test(f.field)&&claimDigits.every(n=>digits(f.value).includes(n)))}).map(claim=>`${rule.label}“${claim}”没有对应的已确认事实`)))];
+ const starLevel=(value:string)=>{const match=value.match(/([四五六]|[4-6])\s*星/);return match?match[1].replace("4","四").replace("5","五").replace("6","六"):null};
+ const covered=(claim:string)=>{
+  const level=starLevel(claim);
+  if(level)return facts.some(f=>starLevel(f.value)===level);
+  const claimDigits=digits(claim);
+  if(claimDigits.length)return facts.some(f=>claimDigits.every(n=>digits(f.value).includes(n)));
+  return facts.some(f=>f.value.replace(/级/g,"").includes(claim.replace(/级/g,"").trim()));
+ };
+ return [...new Set(rules.flatMap(rule=>(text.match(rule.pattern)||[]).filter(claim=>!covered(claim)).map(claim=>`${rule.label}“${claim}”没有对应的已确认事实`)))];
 }
 
 export async function POST(request:Request){

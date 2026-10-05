@@ -3,6 +3,11 @@ import { blocksToText } from "./content";
 
 const visualPattern=/\p{Extended_Pictographic}|[✅【】]/gu;
 
+/** 字数建议区间：偏离只会提示，不拦截生成。 */
+export const LENGTH_ADVISED:[number,number]=[300,500];
+/** 字数硬性区间：比建议区间宽，避免模型数不准中文字符时把可用文案直接判死。 */
+export const LENGTH_HARD:[number,number]=[280,620];
+
 export function isProductFactBlock(block:DraftBlock):boolean{
   return block.category==="objective_fact"||block.category==="marketing";
 }
@@ -19,6 +24,19 @@ export function manualReviewWarnings(draft:Draft):string[]{
     const text=block.text.replace(/\s+/g," ").trim(),excerpt=text.slice(0,34);
     return excerpt?[`第${index+1}段“${excerpt}${text.length>34?"…":""}”属于产品资料之外的知识内容，系统未作事实核验，发布前建议自行检查地名、历史背景、文化和旅游常识。`]:[];
   });
+}
+
+/** 字数偏离建议区间时的提醒，只提示不拦截。 */
+export function lengthWarnings(draft:Draft):string[]{
+  const length=blocksToText(draft.blocks).replace(/\s/g,"").length,[advisedMin,advisedMax]=LENGTH_ADVISED;
+  if(length>advisedMax)return[`全文约${length}字，多于建议的${advisedMin}-${advisedMax}字，发布前可适当精简。`];
+  if(length<advisedMin)return[`全文约${length}字，少于建议的${advisedMin}-${advisedMax}字，发布前可适当补充。`];
+  return[];
+}
+
+/** 发布前的人工复查提醒：事实来源与字数，均为提示、不拦截。 */
+export function reviewWarnings(draft:Draft):string[]{
+  return[...lengthWarnings(draft),...manualReviewWarnings(draft)];
 }
 
 /** 分散补足或移除装饰符号，不改正文；锁定段落可排除在自动整理之外。 */
@@ -47,7 +65,9 @@ export function copyQualityIssues(draft:Draft){
   const issues:string[]=[];
   const text=blocksToText(draft.blocks),length=text.replace(/\s/g,"").length;
   const visualCount=(text.match(visualPattern)||[]).length;
-  if(length<300||length>500)issues.push(`全文应为300-500字，当前约${length}字`);
+  // 字数只做宽松硬拦截：建议区间之外的偏差交给 lengthWarnings 提示，避免误杀可用文案。
+  const [hardMin,hardMax]=LENGTH_HARD;
+  if(length<hardMin||length>hardMax)issues.push(`全文应为${hardMin}-${hardMax}字，当前约${length}字（建议${LENGTH_ADVISED[0]}-${LENGTH_ADVISED[1]}字）`);
   if(visualCount<5||visualCount>9)issues.push(`Emoji或视觉符号应为5-9个，当前约${visualCount}个`);
   if(draft.blocks.length<5||draft.blocks.length>8)issues.push("全文应分为5-8个完整段落");
   const productIndex=draft.blocks.findIndex(isProductFactBlock);
