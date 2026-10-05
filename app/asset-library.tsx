@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, ExternalLink, FolderInput, FolderOpen, FolderPlus, ImagePlus, Link2, Pencil, Trash2, Upload } from "lucide-react";
+import { CheckSquare, ChevronRight, ExternalLink, FolderInput, FolderOpen, FolderPlus, ImagePlus, Link2, Pencil, Square, Trash2, Upload, X } from "lucide-react";
 import ConfirmDialog from "@/components/confirm-dialog";
 import { readApiError } from "@/lib/friendly-error";
 import {
@@ -31,7 +31,8 @@ type Dialog =
   | { kind: "moveFolder"; folder: AssetFolder }
   | { kind: "moveAsset"; asset: Asset }
   | { kind: "deleteFolder"; folder: AssetFolder }
-  | { kind: "deleteAsset"; asset: Asset };
+  | { kind: "deleteAsset"; asset: Asset }
+  | { kind: "deleteSelected" };
 
 /** 把文件夹按层级展开成下拉选项（用全角空格缩进，中文界面里最直观）。 */
 function folderOptions(folders: AssetFolder[], excludeIds: string[] = []) {
@@ -66,6 +67,7 @@ export default function AssetLibrary({ notify }: { notify: (message: string) => 
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [folderName, setFolderName] = useState("");
   const [pickerValue, setPickerValue] = useState("");
+  const [selectMode,setSelectMode]=useState(false),[selectedIds,setSelectedIds]=useState<string[]>([]);
   const input = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -189,6 +191,8 @@ export default function AssetLibrary({ notify }: { notify: (message: string) => 
       notify("删除失败，请重试");
     }
   }
+
+  async function deleteSelected(){setBusy(true);try{const r=await fetch("/api/assets/batch",{method:"DELETE",headers:{"content-type":"application/json"},body:JSON.stringify({ids:selectedIds})});if(!r.ok){notify(await readApiError(r,"批量删除失败"));return}const data=await r.json() as {deleted?:number};setDialog(null);setSelectedIds([]);setSelectMode(false);await load();notify(`已删除 ${data.deleted||0} 张素材`)}catch{notify("批量删除失败，请重试")}finally{setBusy(false)}}
 
   async function createFolder() {
     try {
@@ -347,6 +351,7 @@ export default function AssetLibrary({ notify }: { notify: (message: string) => 
           <h1>为下一条内容找画面</h1>
         </div>
         <div className="asset-top-actions">
+          <button className="secondary-button" onClick={()=>{setSelectMode(value=>!value);setSelectedIds([])}}>{selectMode?<><X size={17}/>退出多选</>:<><CheckSquare size={17}/>批量选择</>}</button>
           <button className="secondary-button" onClick={() => openDialog({ kind: "newFolder" })}>
             <FolderPlus size={17} />新建文件夹
           </button>
@@ -426,10 +431,11 @@ export default function AssetLibrary({ notify }: { notify: (message: string) => 
       {currentAssets.length > 0 ? (
         <div className="real-asset-grid">
           {currentAssets.map((asset) => (
-            <article className="real-asset-card" key={asset.id}>
+            <article className={`real-asset-card ${selectedIds.includes(asset.id)?"selected":""}`} key={asset.id}>
               <div className="asset-photo">
                 {asset.imageUrl ? <img src={asset.imageUrl} alt={asset.sourceName} /> : <ImagePlus />}
                 <span className={`risk-dot ${asset.riskLevel}`}>{asset.riskLevel === "green" ? "绿色" : asset.riskLevel === "yellow" ? "黄色" : "红色"}</span>
+                {selectMode&&<button className="asset-select-check" aria-label={`${selectedIds.includes(asset.id)?"取消选择":"选择"}${asset.sourceName}`} onClick={()=>setSelectedIds(ids=>ids.includes(asset.id)?ids.filter(id=>id!==asset.id):[...ids,asset.id])}>{selectedIds.includes(asset.id)?<CheckSquare/>:<Square/>}</button>}
               </div>
               <div className="real-asset-info">
                 <strong title={asset.sourceName}>{displayName(asset.sourceName)}</strong>
@@ -451,10 +457,10 @@ export default function AssetLibrary({ notify }: { notify: (message: string) => 
                   <option value="yellow">黄色风险</option>
                   <option value="red">红色风险</option>
                 </select>
-                <div className="asset-card-actions">
+                {!selectMode&&<div className="asset-card-actions">
                   <button className="mini-button" onClick={() => openDialog({ kind: "moveAsset", asset })}><FolderInput size={15} />移动</button>
                   <button className="mini-button danger" onClick={() => openDialog({ kind: "deleteAsset", asset })}><Trash2 size={15} />删除</button>
-                </div>
+                </div>}
               </div>
             </article>
           ))}
@@ -473,6 +479,8 @@ export default function AssetLibrary({ notify }: { notify: (message: string) => 
       )}
 
       {loadError && <p className="analysis-error" role="alert">{loadError}</p>}
+
+      {selectMode&&<div className="asset-batch-bar"><span>已选择 <strong>{selectedIds.length}</strong> 张</span><button className="text-button" onClick={()=>setSelectedIds(selectedIds.length===currentAssets.length?[]:currentAssets.map(asset=>asset.id))}>{selectedIds.length===currentAssets.length?"取消全选":"选择当前页全部"}</button><button className="primary-button danger-solid" disabled={!selectedIds.length||busy} onClick={()=>setDialog({kind:"deleteSelected"})}><Trash2 size={17}/>删除所选</button></div>}
 
       {body && (
         <div className="confirm-backdrop" onClick={() => setDialog(null)}>
@@ -518,6 +526,8 @@ export default function AssetLibrary({ notify }: { notify: (message: string) => 
           onCancel={() => setDialog(null)}
         />
       )}
+
+      {dialog?.kind==="deleteSelected"&&<ConfirmDialog title={`删除所选 ${selectedIds.length} 张素材？`} description={`删除后无法恢复；其中已用于内容的素材会让对应故事板缺图。`} confirmLabel="批量删除" onConfirm={()=>void deleteSelected()} onCancel={()=>setDialog(null)}/>}
 
       <p className="rights-notice">绿色表示平台或授权条件层面可用，但不代表图片中的人物、商标、艺术品或场地等第三方权利一定不存在。</p>
     </div>

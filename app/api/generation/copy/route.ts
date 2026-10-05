@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { getAIProvider } from "../../../../lib/ai";
 import { blocksToText,normalizeFacts,parseJson } from "../../../../lib/content";
-import { commonSenseFactIssues,copyQualityIssues,normalizeVisualSymbols,productFactDraft,reviewWarnings,transitionIssues } from "../../../../lib/copy-quality";
+import { commonSenseFactIssues,copyQualityIssues,lengthRepairHints,LENGTH_ADVISED,normalizeVisualSymbols,productFactDraft,reviewWarnings,structureHints,transitionIssues,unfitInfoHits } from "../../../../lib/copy-quality";
 import type { GenerationContext } from "../../../../lib/ai/types";
 import type { InspirationTopic } from "../../../../lib/inspiration";
 import { labels } from "../../../../lib/style";
@@ -28,12 +28,16 @@ export async function POST(request:Request){
   const context:GenerationContext={topic,facts,salesIntensity:1,stylePreferences:labels(style?.stable_preferences),angleType:inspiration?.angleType||"custom",sources};
   const ai=getAIProvider(),strategy={type:"advisor" as const,title:"产品知识分享",approach:"前半段知识内容，后半段自然连接产品方案",opening:topic};
   let draft=normalizeVisualSymbols(await ai.generateCopy(context,strategy)),verification=await ai.verifyCopy(context,productFactDraft(draft));
-  let factIssues=verification.fact_safe?[]:commonSenseFactIssues(verification.fact_issues),issues=copyQualityIssues(draft),transitions=transitionIssues(draft);
-  if(issues.length||factIssues.length||transitions.length){draft=normalizeVisualSymbols(await ai.reviseCopy({...context,blocks:draft.blocks,lockedBlockIds:[],instruction:`这是唯一一次质量修复。保持短句分行排版：一行一个短句、用换行分隔，同类信息用｜并列，不要写成大段散文；全文220-320个非空白字符、9-13行、段落数4-14个；8-14个Emoji或视觉符号，主要放行首做标记（住宿🏨 交通✈️ 餐食🍽️ 门票🎫 价格💰 优惠🎁 收束🌇）；前2-3个block只写简短引子，不要展开长篇科普；产品部分只用简洁短句罗列（住宿｜交通与航班｜班期｜门票与官导｜餐食｜价格与优惠），产品段第一句先承接上文再引出产品，禁止生硬转折；最后一行必须完整。凡涉及价格、日期、天数、住宿、航班、名额等数据，只使用锁定事实里的原始写法，不要自行增减或改写数值。修正以下问题：${[...issues,...factIssues,...transitions].join("；")}`}));issues=copyQualityIssues(draft);verification=await ai.verifyCopy(context,productFactDraft(draft));factIssues=verification.fact_safe?[]:commonSenseFactIssues(verification.fact_issues);transitions=transitionIssues(draft)}
+  const currentLength=()=>blocksToText(draft.blocks).replace(/\s/g,"").length;
+  // 触发「唯一一次质量修复」的条件：结构问题、常识问题、过渡生硬、字数明显偏离、版式偏好（产品段过早/缺失）、条款类信息。
+  // 注意字数与「产品段过早/缺失」都不再拦截生成，只借这次修复调整；修完仍不理想只作提示。
+  const lengthHints=lengthRepairHints(draft);
+  let factIssues=verification.fact_safe?[]:commonSenseFactIssues(verification.fact_issues),issues=copyQualityIssues(draft),transitions=transitionIssues(draft),structures=structureHints(draft),unfit=unfitInfoHits(draft);
+  if(issues.length||factIssues.length||transitions.length||structures.length||lengthHints.length||unfit.length){draft=normalizeVisualSymbols(await ai.reviseCopy({...context,blocks:draft.blocks,lockedBlockIds:[],instruction:`这是唯一一次质量修复。保持短句分行排版：一行一个短句、用换行分隔，同类信息用｜并列，不要写成大段散文；全文${LENGTH_ADVISED[0]}-${LENGTH_ADVISED[1]}个非空白字符（当前约${currentLength()}字）、9-14行、段落数4-14个；8-14个Emoji或视觉符号，主要放行首做标记（住宿🏨 交通✈️ 餐食🍽️ 门票🎫 价格💰 优惠🎁 收束🌇）；前2-3个block只写简短引子，不要展开长篇科普；产品部分只用简洁短句罗列（住宿｜交通与航班｜班期｜门票与官导｜餐食｜价格与优惠），产品段第一句先承接上文再引出产品，禁止生硬转折；最后一行必须完整。全篇都不要出现保险与保费金额、退改/取消/退款规则与费用、签证费、小费、押金、行李与税费、单房差与补差价等条款或附加费用信息（也不要把这类行政条款当成引子或知识点），若原文已有请整行删除。凡涉及价格、日期、天数、住宿、航班、名额等数据，只使用锁定事实里的原始写法，不要自行增减或改写数值。修正以下问题：${[...issues,...factIssues,...transitions,...structures,...lengthHints,...(unfit.length?[`不宜出现在朋友圈的条款/附加费用信息：${unfit.join("；")}`]:[])].join("；")}`}));issues=copyQualityIssues(draft);verification=await ai.verifyCopy(context,productFactDraft(draft));factIssues=verification.fact_safe?[]:commonSenseFactIssues(verification.fact_issues);transitions=transitionIssues(draft);structures=structureHints(draft);unfit=unfitInfoHits(draft)}
   if(issues.length)return json({code:"COPY_QUALITY_FAILED",error:`文案完整性检查未通过：${issues.join("；")}`},{status:422});
   if(factIssues.length)throw new FactCheckError(`常识检查未通过：${factIssues.join("；")}`);
-  // 过渡仍偏直接时只作提示，不拦截（用户策略：尽量不拦）。
-  verification={...verification,fact_safe:true,fact_issues:[...reviewWarnings(draft),...transitions]};
+  // 过渡、产品段版式仍不理想时只作提示，不拦截（用户策略：尽量不拦）。
+  verification={...verification,fact_safe:true,fact_issues:[...reviewWarnings(draft),...transitions,...structures]};
   const id=crypto.randomUUID(),now=new Date().toISOString(),topicMeta={inspiration:inspiration||{angleType:"custom",title:topic,sources:[]}};
   const productSnapshot={id:product.id,name:product.name,facts,analysis:parseJson(product.ai_analysis,{})};
   await db().prepare("INSERT INTO contents (id,user_id,product_id,topic_title,topic_meta,source_input,sales_intensity,status,product_snapshot,fingerprint,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,user.userId,product.id,topic,JSON.stringify(topicMeta),topic,1,"draft",JSON.stringify(productSnapshot),JSON.stringify({countries:inspiration?[inspiration.country]:[],theme:topic,product:product.id,contentTypes:[inspiration?.angleType||"custom"]}),now,now).run();

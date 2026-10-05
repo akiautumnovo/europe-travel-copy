@@ -4,6 +4,7 @@ import { config as runtimeConfig } from "../../../../../lib/bindings";
 import { draftSchema } from "../../../../../lib/ai/types";
 import { blocksToText, isVersionConflict } from "../../../../../lib/content";
 import { mergeEvidence, parsePreferences } from "../../../../../lib/style";
+import { prepareAdoptedCropAssets } from "../../../../../lib/assets/materialize";
 import { db, json, requireApiUser } from "../../../_shared";
 
 const schema = z.object({
@@ -34,7 +35,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
     // 重试或重复点击采用时返回已有结果，不再插入一份完全相同的最终版本。
     if (Boolean(latest.isAdopted)) {
-      return json({ versionNo: latest.versionNo, status: "adopted", styleLearned: false, unchanged: true });
+      const prepared=await prepareAdoptedCropAssets(id,user.userId);
+      return json({ versionNo: latest.versionNo, status: "adopted", styleLearned: false, unchanged: true,cropAssets:prepared.assets,assetWarnings:prepared.warnings });
     }
 
     const versionNo = input.versionNo + 1;
@@ -75,7 +77,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         learned = false;
       }
     }
-    return json({ versionNo, status: "adopted", styleLearned: learned });
+    const prepared=await prepareAdoptedCropAssets(id,user.userId);
+    return json({ versionNo, status: "adopted", styleLearned: learned,cropAssets:prepared.assets,assetWarnings:prepared.warnings });
   } catch (error) {
     if (isVersionConflict(error)) return json({ error: "此内容已有新版本，请刷新后重试" }, { status: 409 });
     return json({ error: error instanceof Error ? error.message : "采用失败" }, { status: 422 });

@@ -28,7 +28,7 @@ export class DeepSeekProvider implements AIProvider {
   async generateCopy(input: GenerationContext): Promise<Draft> {
     return this.callJson(`写一篇完整的欧洲旅行朋友圈，主题是“${input.topic}”。
 只返回 JSON：{"blocks":[{"id":"b1","text":"段落文字","category":"objective_fact|professional_advice|personal_experience|marketing|literary"}]}。
-全文 220-320 个非空白字符（硬性 190-480），写成 9-14 行短句，归入 5-14 个 block（一行一个 block 也可以）；每个 block 内可用换行分隔短句（JSON 字符串里写 \\n），一行一句、一般不超过 28 字。
+全文 220-320 个非空白字符（建议 200-340，不要写成长文），写成 9-14 行短句，归入 5-14 个 block（一行一个 block 也可以）；每个 block 内可用换行分隔短句（JSON 字符串里写 \\n），一行一句、一般不超过 28 字。
 
 【排版：短句分行】（本次最重要的要求）
 - 学朋友圈广告的节奏：一行一个完整短句，短句之间换行；同类信息用“｜”并列成一行，不要写成长段散文
@@ -39,10 +39,11 @@ export class DeepSeekProvider implements AIProvider {
 【结构】
 - 前 2-3 个 block 是引子：简短、勾人，每个 block 1-2 行。点出这次旅程独特在哪，或写一句展开性、文艺性的描写（例如收束感的画面句）。**人文科普点到为止，不要展开长篇**，一行一句。
 - 第 4 个 block 起是产品部分：**只用简洁短句罗列，不写完整段落**，控制在 6-9 行。优先覆盖这些类目，每类一行、用“｜”并列要点：住宿（连住几晚、酒店档次）｜交通（航司、直飞、双点进出）｜航班与班期｜门票与官导｜餐食（几顿正餐、是否全含）｜价格与早鸟优惠
+- **全篇都不要出现保险与保费金额、退改/取消/退款规则与费用、签证费、小费与自费项目、押金、行李与税费、单房差与补差价等条款类或附加费用信息**——即使锁定事实里有也不写；也不要把「签证、保险、退改规则」这类行政条款当成引子或知识点。这类内容会明显拉低朋友圈的观感
 - 产品部分允许 1 句展开性、文艺性的描写做收束，但不要空泛热词
 - 产品段的第一句要先承接上文再引出产品，禁止“说到这里”“接下来介绍我们的产品”这类生硬转折
 - 开头至少 2 个 block 是引子（简短的人文/文艺引子），category 只能用 literary 或 professional_advice；引子结束后进入产品部分，category 用 objective_fact 或 marketing
-- 产品部分只用与主题最相关的 4-8 条锁定事实，不要把整份资料塞进来
+- 产品部分只用与主题最相关的 4-8 条锁定事实，不要把整份资料塞进来；**挑选时优先住宿、交通与航班、班期、门票与官导、餐食、价格与优惠，主动跳过保险与保费、退改/取消规则与费用、签证费、小费、押金、行李与税费等条款类事实**
 - 最后一行必须是完整句，不能停在逗号、冒号、连接词或未闭合括号处
 
 【AI 腔，禁止出现】
@@ -68,7 +69,7 @@ export class DeepSeekProvider implements AIProvider {
     const locked = input.blocks.filter(b=>input.lockedBlockIds.includes(b.id));
     const scope = input.targetBlockId ? `只允许修改 id=${input.targetBlockId} 的段落，其他段落逐字保留。` : "修改全文，但 lockedBlockIds 中的段落必须逐字保留。";
     const result = await this.callJson(`${scope}\n修改要求：${input.instruction}\n只返回与输入相同 id、相同顺序的 JSON blocks，每个 block 必须保留 id、text、category 三个字段，category 沿用输入的取值。禁止改变锁定事实，禁止编造经历或数据。
-改写后必须保留“短句分行”的排版：一行一个短句、用换行分隔，同类信息用“｜”并列，绝不能改写成大段散文；全文 220-320 个非空白字符、9-14 行；8-14 个 Emoji 或视觉符号，主要放行首做标记并与内容相关（住宿🏨 交通与航班✈️ 餐食🍽️ 门票与官导🎫 价格💰 优惠🎁 风光收束🌇）。产品部分只保留简洁的短句罗列（住宿｜交通与航班｜班期｜门票与官导｜餐食｜价格与优惠），可保留 1 句展开性描写做收束；产品段第一句先承接上文再引出产品，不要生硬转折。前半段 category 只能用 literary 或 professional_advice，产品段 category 用 objective_fact 或 marketing。不得出现虚构亲历、职业身份或客户故事，句子和最后一行必须完整。
+改写后必须保留“短句分行”的排版：一行一个短句、用换行分隔，同类信息用“｜”并列，绝不能改写成大段散文；全文 200-340 个非空白字符、9-14 行；8-14 个 Emoji 或视觉符号，主要放行首做标记并与内容相关（住宿🏨 交通与航班✈️ 餐食🍽️ 门票与官导🎫 价格💰 优惠🎁 风光收束🌇）。产品部分只保留简洁的短句罗列（住宿｜交通与航班｜班期｜门票与官导｜餐食｜价格与优惠），可保留 1 句展开性描写做收束；产品段第一句先承接上文再引出产品，不要生硬转折。**全篇禁止出现保险与保费金额、退改/取消/退款规则与费用、签证费、小费与自费项目、押金、行李与税费、单房差与补差价等条款或附加费用信息，也不要把这类行政条款当成引子或知识点，若原文已有请整行删除**。前半段 category 只能用 literary 或 professional_advice，产品段 category 用 objective_fact 或 marketing。不得出现虚构亲历、职业身份或客户故事，句子和最后一行必须完整。
 锁定段落：${JSON.stringify(locked)}\n锁定事实：${JSON.stringify(input.facts)}\n可靠来源：${JSON.stringify(input.sources||[])}\n当前段落：${JSON.stringify(input.blocks)}`, lenientDraftSchema, { temperature: 0.75, system: WRITER_SYSTEM });
     const byId = new Map(input.blocks.map(b=>[b.id,b.category] as const));
     return { blocks: result.blocks.map(b=>({ ...b, category: byId.get(b.id) ?? b.category })) };

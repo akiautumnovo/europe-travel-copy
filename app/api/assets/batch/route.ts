@@ -1,4 +1,4 @@
-import { bucket,db,json,requireApiUser } from "../../_shared";
+import { z } from "zod";import { bucket,db,json,requireApiUser } from "../../_shared";
 import { resolveFolderId } from "../folders/store";
 const licenses:Record<string,{status:string;risk:string}>={owned:{status:"owned",risk:"green"},authorized:{status:"authorized",risk:"green"},purchased:{status:"purchased",risk:"green"},other:{status:"unknown",risk:"yellow"}};
 const MAX_FILES=20,MAX_BYTES=15*1024*1024;
@@ -34,4 +34,16 @@ export async function POST(request:Request){
  }
  if(!items.length)return json({error:failed[0]?.error||"上传失败",failed},{status:422});
  return json({items,failed},{status:201});
+}
+
+const deleteSchema=z.object({ids:z.array(z.string().min(1)).min(1).max(100)});
+export async function DELETE(request:Request){
+ const user=await requireApiUser(request);if(user instanceof Response)return user;
+ let input:z.infer<typeof deleteSchema>;try{input=deleteSchema.parse(await request.json())}catch{return json({error:"请选择要删除的素材"},{status:400})}
+ const ids=[...new Set(input.ids)],rows:Array<{id:string;storagePath:string|null}>=[];
+ for(const id of ids){const row=await db().prepare("SELECT id,storage_path as storagePath FROM assets WHERE id=? AND user_id=?").bind(id,user.userId).first<{id:string;storagePath:string|null}>();if(row)rows.push(row)}
+ if(!rows.length)return json({error:"所选素材不存在或已经删除"},{status:404});
+ await db().batch(rows.map(row=>db().prepare("DELETE FROM assets WHERE id=? AND user_id=?").bind(row.id,user.userId)));
+ const failed:string[]=[];for(const row of rows){if(!row.storagePath)continue;try{await bucket().delete(row.storagePath)}catch{failed.push(row.id)}}
+ return json({ok:true,deleted:rows.length,fileCleanupFailed:failed.length});
 }
