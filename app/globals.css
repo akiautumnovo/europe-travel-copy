@@ -230,6 +230,18 @@ html,body{max-width:100%;overflow-x:hidden}.mobile-editor-bar{display:none}.sele
 .locked-fact strong{color:#173b4e;font-size:14px;font-weight:700;line-height:1.45;word-break:break-word}
 @media(max-width:700px){.locked-facts-grid{grid-template-columns:1fr}.locked-facts-bar{padding:12px}}
 
+/* 本地素材的朋友圈 1:1 裁切器 */
+.selected-story article .crop-story-button{position:absolute;right:4px;top:4px;z-index:2;display:grid;width:28px;height:28px;place-items:center;border-radius:8px;background:#fffffff0;color:#126d6c;box-shadow:0 2px 8px #09263628}
+.cropper-backdrop{position:fixed;z-index:240;inset:0;display:grid;place-items:center;padding:20px;background:#0926368c;backdrop-filter:blur(4px)}
+.cropper-dialog{width:min(560px,100%);max-height:95dvh;overflow:auto;padding:22px;border-radius:22px;background:#fff;box-shadow:0 24px 70px #08283755}
+.cropper-dialog>header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.cropper-dialog h2{margin:5px 0 0;font-size:20px}.cropper-dialog>header>button{display:grid;width:38px;height:38px;place-items:center;border:0;border-radius:50%;background:#f1f5f5;color:#55717c}
+.cropper-hint{margin:13px 0;color:var(--muted);font-size:13px;line-height:1.6}.cropper-stage{position:relative;width:min(430px,100%);margin:auto;overflow:hidden;border-radius:14px;background:#dfe7e7;box-shadow:inset 0 0 0 1px #bfd0d2}
+.cropper-stage:after{content:"";pointer-events:none;position:absolute;inset:0;background:linear-gradient(90deg,transparent 33.1%,#fff9 33.2% 33.5%,transparent 33.6% 66.3%,#fff9 66.4% 66.7%,transparent 66.8%),linear-gradient(0deg,transparent 33.1%,#fff9 33.2% 33.5%,transparent 33.6% 66.3%,#fff9 66.4% 66.7%,transparent 66.8%)}
+.cropper-stage canvas{display:block;width:100%;height:auto;aspect-ratio:1;cursor:grab;touch-action:none}.cropper-stage canvas:active{cursor:grabbing}
+.cropper-controls{display:grid;grid-template-columns:40px 1fr 40px 48px;align-items:center;gap:9px;margin-top:15px}.cropper-controls button{display:grid;width:40px;height:40px;place-items:center;border:1px solid var(--line);border-radius:10px;background:#f7f9f9}.cropper-controls button:disabled{opacity:.4}.cropper-controls input{width:100%}.cropper-controls span{text-align:right;color:var(--muted);font-size:12px;font-weight:700}
+.cropper-dialog>footer{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+@media(max-width:700px){.cropper-backdrop{align-items:end;padding:0}.cropper-dialog{width:100%;max-height:96dvh;padding:18px 16px calc(18px + env(safe-area-inset-bottom));border-radius:22px 22px 0 0}.cropper-stage{width:min(100%,55dvh)}.cropper-dialog>footer{display:grid;grid-template-columns:1fr 1.35fr}.cropper-dialog>footer button{width:100%;padding-inline:8px}}
+
 /* 朋友圈配图：按数量自适应裁切 + 上传顺序提示（微信单图约 4:3、多图 1:1，均居中裁切） */
 .moments-images.view-original img{object-fit:contain}
 .moments-index{position:absolute;left:4px;top:4px;display:grid;width:18px;height:18px;place-items:center;border-radius:50%;background:#0b2a3dcc;color:#fff;font-size:11px;font-weight:800;line-height:1}
