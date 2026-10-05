@@ -89,7 +89,7 @@ ${candidates?`\n优先从以下随机候选目的地中挑选（请优先使用�
 近期国家：${JSON.stringify(input.recentCountries)}
 搜索素材：${JSON.stringify(input.sourceSummaries)}`,inspirationDraftSchema);
   }
-async generateStoryboard(text:string):Promise<Storyboard>{return this.callJson(`根据朋友圈文案设计简单视觉故事板。只返回 JSON：{"roles":[{"id":"hero","label":"首图","description":"画面作用","searchTheme":"对应中文主题"}],"searchThemes":[{"label":"中文主题","query":"concise English Pixabay query"}]}。要求 6-9 个叙事角色，但只归并为 4-6 个搜索主题；角色必须有首图、大景、生活/人物环境、细节和收尾等不同作用，禁止同一地名重复九次；query 只描述真实摄影内容，不生成AI图片。文案：${text.slice(0,5000)}`,storyboardSchema)}
+async generateStoryboard(text:string):Promise<Storyboard>{return this.callJson(`根据朋友圈文案设计简单视觉故事板。只返回 JSON：{"roles":[{"id":"hero","label":"首图","description":"画面作用","searchTheme":"对应中文主题"}],"searchThemes":[{"label":"中文主题","query":"concise English photo query including exact destination"}]}。要求 6-9 个叙事角色，但只归并为 4-6 个搜索主题；角色必须有首图、大景、生活/人物环境、细节和收尾等不同作用。先识别文案的主要国家和城市，每个 query 都必须包含文案中对应的英文城市名或国家名，不得换成相似的其他国家或城市；没有明确地点时才允许使用泛化欧洲主题。query 只描述真实摄影内容，不生成AI图片，并优先适合朋友圈方形裁切的主体居中构图。文案：${text.slice(0,5000)}`,storyboardSchema)}
   async summarizeStyleChange(original:Draft,adopted:Draft):Promise<StyleSignals>{return this.callJson(`只分析写作风格差异，不提取或学习任何事实。对比原始选中版本与最终采用版本，识别删除词语、CTA强弱、Emoji、长度、开头和专业表达变化。只返回 JSON：{"signals":[{"label":"偏好描述","flexible":true,"evidence":"差异证据"}],"summary":{"length_change":"","cta_change":"","emoji_change":"","opening_change":"","professional_change":""}}。signals 最多6条；只输出有明确差异支持的偏好，不把地点、价格、日期或产品信息当作风格。原始：${JSON.stringify(original.blocks)}\n最终：${JSON.stringify(adopted.blocks)}`,styleSignalsSchema)}
 
   private async callJson<T>(prompt:string, schema:{parse:(value:unknown)=>T}, options:{temperature?:number; system?:string}={}):Promise<T>{

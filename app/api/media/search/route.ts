@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { getMediaProvider } from "../../../../lib/media";
+import { reviewMediaPhotos } from "../../../../lib/media/review";
 import { json, requireApiUser } from "../../_shared";
 
 const schema = z.object({
@@ -32,8 +33,9 @@ export async function POST(request: Request) {
     }
 
     // 缓存 key 必须带 provider，否则切换图库后会命中另一家的旧结果。
+    const orientation = input.orientation ?? "square";
     const cacheKey = new Request(
-      `https://media-cache.local/search?p=${provider.name}&q=${encodeURIComponent(input.query.toLowerCase())}&o=${input.orientation || ""}`,
+      `https://media-cache.local/search?v=2&p=${provider.name}&q=${encodeURIComponent(input.query.toLowerCase())}&o=${orientation}`,
     );
     const cache = getDefaultCache();
     const cached = cache ? await cache.match(cacheKey) : undefined;
@@ -43,16 +45,18 @@ export async function POST(request: Request) {
     }
 
     const result = await provider.searchPhotos(input.query, {
-      perPage: 10,
-      orientation: input.orientation,
+      // 多取一批再做地点冲突审查与比例排序，避免过滤后无图可用。
+      perPage: 20,
+      orientation,
     });
+    const reviewed = { ...result, photos: reviewMediaPhotos(input.query, result.photos, orientation, 10) };
     if (cache) {
-      const response = Response.json(result, {
+      const response = Response.json(reviewed, {
         headers: { "cache-control": "public, max-age=86400" },
       });
       await cache.put(cacheKey, response.clone());
     }
-    return json({ ...result, configured: true, provider: provider.name });
+    return json({ ...reviewed, configured: true, provider: provider.name });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     return json(
