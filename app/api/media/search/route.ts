@@ -46,7 +46,8 @@ export async function POST(request: Request) {
 
     const result = await provider.searchPhotos(input.query, {
       // 多取一批再做地点冲突审查与比例排序，避免过滤后无图可用。
-      perPage: 20,
+      // 图库以 1.5（横）/0.67（竖）为主，方形结果占比约 3~5%，只取 20 张会整批被过滤掉。
+      perPage: 200,
       orientation,
     });
     const reviewed = { ...result, photos: reviewMediaPhotos(input.query, result.photos, orientation, 10) };
