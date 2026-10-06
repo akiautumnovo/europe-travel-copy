@@ -135,6 +135,18 @@ html,body{max-width:100%;overflow-x:hidden}.mobile-editor-bar{display:none}.sele
 .account-sheet h2{margin:5px 0 0;font-size:17px;line-height:1.45;overflow-wrap:anywhere}
 .account-sheet-note{margin:12px 0 0;color:var(--muted);font-size:13px;line-height:1.65}
 .account-sheet-signout{margin-top:20px}
+.api-key-sheet{max-height:min(860px,92vh);overflow:auto}
+.api-key-list{display:grid;gap:13px;margin:18px 0}
+.api-key-list>label{display:grid;gap:8px;padding:13px;border:1px solid var(--line);border-radius:13px;background:#fafcfc}
+.api-key-list>label>span{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.api-key-list small{color:var(--muted)}
+.api-key-list>label>div{display:flex;gap:8px}
+.api-key-list input{min-width:0;flex:1;height:42px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font:inherit;outline:none}
+.api-key-list input:focus{border-color:var(--teal)}
+.danger-text{border:0;background:transparent;color:#b94b43;padding:0 7px;cursor:pointer}
+.api-key-actions{display:flex;gap:10px;flex-wrap:wrap}
+.api-key-actions .primary-button,.api-key-actions .secondary-button{flex:1;justify-content:center}
+.api-key-actions .account-sheet-signout{margin-top:0}
 @media(max-width:700px){.account-sheet{padding:20px 17px calc(20px + env(safe-area-inset-bottom));border-radius:22px 22px 0 0}}
 
 /* 素材页：文件夹导航与增删 */

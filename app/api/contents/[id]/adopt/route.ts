@@ -1,3 +1,4 @@
+import { getUserApiKeys } from "@/lib/user-api-keys";
 import { z } from "zod";
 import { getAIProvider } from "../../../../../lib/ai";
 import { config as runtimeConfig } from "../../../../../lib/bindings";
@@ -59,7 +60,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             .bind(id, user.userId, selected).first<{ blocks: string }>()
           : null;
         if (initial) {
-          const signals = await getAIProvider().summarizeStyleChange({ blocks: JSON.parse(initial.blocks) }, { blocks: input.blocks });
+          const signals = await getAIProvider((await getUserApiKeys(user.userId)).deepseek).summarizeStyleChange({ blocks: JSON.parse(initial.blocks) }, { blocks: input.blocks });
           let dna = await db().prepare("SELECT stable_preferences,candidate_preferences,evidence_summary FROM style_dna WHERE user_id=?")
             .bind(user.userId).first<{ stable_preferences: string; candidate_preferences: string; evidence_summary: string }>();
           if (!dna) {

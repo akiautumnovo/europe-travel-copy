@@ -1,3 +1,4 @@
+import { getUserApiKeys } from "@/lib/user-api-keys";
 import { getAIProvider } from "../../../lib/ai";
 import { inputTypeSchema } from "../../../lib/ai/types";
 import { extractTextFromFile } from "../../../lib/files/extract-text";
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     }
     const parsedType = inputTypeSchema.parse(type);
     if (text.length < 8) return json({ error: "请提供更完整的文字内容" }, { status: 400 });
-    const provider = getAIProvider();
+    const provider = getAIProvider((await getUserApiKeys(auth.userId)).deepseek);
     const analysis = parsedType === "reference" ? await provider.analyzeReference({ type: parsedType, text }) : await provider.extractProduct({ type: parsedType, text });
     return json({ type: parsedType, sourceName, rawText: text, analysis });
   } catch (error) {
@@ -33,4 +34,3 @@ export async function POST(request: Request) {
     return json({ error: message }, { status: message.includes("配置") ? 503 : 422 });
   }
 }
-

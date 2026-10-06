@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Clock3, ExternalLink, FileUp, Image as ImageIcon, Layers3, Lightbulb, LoaderCircle, LogOut, Package, Plus, RefreshCw, Send, ShieldCheck, Sparkles, Trash2, UserRound, WandSparkles, X } from "lucide-react";
+import { Check, Clock3, ExternalLink, FileUp, Image as ImageIcon, KeyRound, Layers3, Lightbulb, LoaderCircle, LogOut, Package, Plus, RefreshCw, Send, ShieldCheck, Sparkles, Trash2, UserRound, WandSparkles, X } from "lucide-react";
 import AnalysisWorkspace from "./analysis-workspace";
 import CreationWorkspace from "./creation-workspace";
 import AssetLibrary from "./asset-library";
@@ -11,6 +11,9 @@ import { readApiError } from "@/lib/friendly-error";
 
 type MainView = "inspiration" | "products" | "assets" | "style" | "history";
 type View = MainView | "analysis" | "creation";
+type ApiKeyName = "deepseek" | "bocha" | "tavily" | "pixabay";
+type ApiKeyStatus = Record<ApiKeyName,{configured:boolean;last4:string}>;
+const apiKeyLabels:Record<ApiKeyName,string>={deepseek:"DeepSeek",bocha:"博查",tavily:"Tavily",pixabay:"Pixabay"};
 
 const navItems: { id: MainView; label: string; icon: typeof Lightbulb }[] = [
   { id: "inspiration", label: "灵感", icon: Lightbulb }, { id: "products", label: "产品", icon: Package },
@@ -25,6 +28,7 @@ export default function Home() {
   const [creationTopic,setCreationTopic]=useState(""),[creationInspirationId,setCreationInspirationId]=useState(""),[resumeContentId,setResumeContentId]=useState(""),[creationProductId,setCreationProductId]=useState("");
   const [access,setAccess]=useState<{state:"checking"}|{state:"granted";name:string}|{state:"gate";gateEnabled:boolean;signedInEmail:string|null}>({state:"checking"});
   const [gateEmail,setGateEmail]=useState(""),[gateBusy,setGateBusy]=useState(false),[gateError,setGateError]=useState(""),[accountOpen,setAccountOpen]=useState(false);
+  const [apiKeyStatus,setApiKeyStatus]=useState<ApiKeyStatus|null>(null),[apiKeyValues,setApiKeyValues]=useState<Record<ApiKeyName,string>>({deepseek:"",bocha:"",tavily:"",pixabay:""}),[apiKeyBusy,setApiKeyBusy]=useState(false),[apiKeyError,setApiKeyError]=useState("");
   const activeMain: MainView = ["analysis", "creation"].includes(view) ? "inspiration" : (view as MainView);
   useEffect(() => { void (async()=>{
     try{
@@ -48,6 +52,8 @@ export default function Home() {
     window.location.reload();
   }catch{setGateError("验证失败，请重试")}finally{setGateBusy(false)}}
   async function signOut(){try{await fetch("/api/access",{method:"DELETE"})}catch{/* 即使清 cookie 失败也继续走平台登出 */}/* /signout-with-chatgpt 是托管平台的路由，必须整页跳转，不能走客户端路由 */window.location.href="/signout-with-chatgpt?return_to=/"}
+  async function openAccount(){setAccountOpen(true);setApiKeyError("");try{const r=await fetch("/api/account/api-keys"),data=await r.json() as {keys?:ApiKeyStatus;error?:string};if(!r.ok||!data.keys)throw new Error(data.error||"读取失败");setApiKeyStatus(data.keys)}catch(error){setApiKeyError(error instanceof Error?error.message:"密钥状态读取失败")}}
+  async function saveApiKeys(patch?:Partial<Record<ApiKeyName,string|null>>){const body=patch||Object.fromEntries((Object.keys(apiKeyValues) as ApiKeyName[]).filter(name=>apiKeyValues[name].trim()).map(name=>[name,apiKeyValues[name].trim()]));if(!Object.keys(body).length){setApiKeyError("请输入至少一个需要新增或替换的密钥");return}setApiKeyBusy(true);setApiKeyError("");try{const r=await fetch("/api/account/api-keys",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(body)}),data=await r.json() as {keys?:ApiKeyStatus;error?:string};if(!r.ok||!data.keys)throw new Error(data.error||"保存失败");setApiKeyStatus(data.keys);setApiKeyValues({deepseek:"",bocha:"",tavily:"",pixabay:""});flash("API 密钥已加密保存")}catch(error){setApiKeyError(error instanceof Error?error.message:"密钥保存失败")}finally{setApiKeyBusy(false)}}
 
   if (access.state === "checking") return <div className="signin-gate"><p className="signin-note">正在确认访问权限…</p></div>;
   if (access.state === "gate") return <div className="signin-gate"><section className="signin-card">
@@ -77,7 +83,7 @@ export default function Home() {
     <aside className="desktop-sidebar">
       <button className="brand" onClick={() => setView("inspiration")} aria-label="返回今日灵感"><span className="brand-mark">旅</span><span><strong>旅笺</strong><small>朋友圈内容助手</small></span></button>
       <nav aria-label="主导航">{navItems.map((item) => { const Icon = item.icon; const longLabel = item.label === "灵感" ? "今日灵感" : item.label === "风格" ? "我的风格" : item.label === "历史" ? "内容历史" : item.label; return <button key={item.id} className={activeMain === item.id ? "nav-item active" : "nav-item"} onClick={() => setView(item.id)}><Icon size={19}/><span>{longLabel}</span></button>; })}</nav>
-      <div className="account-card"><span className="account-avatar">{accountShort.slice(0,1).toUpperCase()}</span><div><strong title={access.name}>{accountShort}</strong><small>数据已保存</small></div><button className="account-signout" title={`退出登录（${access.name}）`} aria-label="退出登录" onClick={()=>void signOut()}><LogOut size={17}/></button></div>
+      <div className="account-card"><span className="account-avatar">{accountShort.slice(0,1).toUpperCase()}</span><div><strong title={access.name}>{accountShort}</strong><small>数据与密钥独立保存</small></div><button className="account-signout" title="API 密钥设置" aria-label="API 密钥设置" onClick={()=>void openAccount()}><KeyRound size={17}/></button><button className="account-signout" title={`退出登录（${access.name}）`} aria-label="退出登录" onClick={()=>void signOut()}><LogOut size={17}/></button></div>
       <div className="phase-note"><span>MVP</span><p>完整创作闭环</p></div>
     </aside>
     <main className="main-content">
@@ -85,8 +91,8 @@ export default function Home() {
       {view === "analysis" && <AnalysisWorkspace initialText={analysisText} initialProductId={analysisProductId||undefined} onBack={()=>setView(analysisProductId?"products":"inspiration")} onContinue={(productId)=>{setCreationProductId(productId);setCreationTopic("");setResumeContentId("");setView("inspiration")}} notify={flash}/>}
       {view === "creation" && <CreationWorkspace initialTopic={creationTopic} initialInspirationId={creationInspirationId||undefined} initialContentId={resumeContentId||undefined} initialProductId={creationProductId||undefined} onBack={()=>setView("inspiration")} notify={flash}/>}
     </main>
-    {view!=="creation"&&<nav className="mobile-nav" aria-label="手机主导航">{navItems.map((item) => { const Icon = item.icon; return <button key={item.id} className={activeMain === item.id ? "active" : ""} onClick={() => setView(item.id)}><Icon size={21}/><span>{item.label}</span></button>; })}<button className={accountOpen ? "active" : ""} onClick={() => setAccountOpen(true)} aria-label={`账号：${access.name}`}><span className="nav-avatar">{accountShort.slice(0,1).toUpperCase()}</span><span>账号</span></button></nav>}
-    {accountOpen&&<div className="sheet-backdrop" onClick={()=>setAccountOpen(false)}><section className="account-sheet" role="dialog" aria-modal="true" aria-label="账号" onClick={e=>e.stopPropagation()}><div className="sheet-handle"/><header><div><span className="mini-label">当前账号</span><h2>{access.name}</h2></div><button onClick={()=>setAccountOpen(false)} aria-label="关闭"><X size={20}/></button></header><p className="account-sheet-note">产品、内容和素材都记在这个账号下。退出后重新输入同一个邮箱，数据还在。</p><button className="secondary-button account-sheet-signout" onClick={()=>void signOut()}><LogOut size={17}/>退出登录</button></section></div>}
+    {view!=="creation"&&<nav className="mobile-nav" aria-label="手机主导航">{navItems.map((item) => { const Icon = item.icon; return <button key={item.id} className={activeMain === item.id ? "active" : ""} onClick={() => setView(item.id)}><Icon size={21}/><span>{item.label}</span></button>; })}<button className={accountOpen ? "active" : ""} onClick={() => void openAccount()} aria-label={`账号：${access.name}`}><span className="nav-avatar">{accountShort.slice(0,1).toUpperCase()}</span><span>账号</span></button></nav>}
+    {accountOpen&&<div className="sheet-backdrop" onClick={()=>setAccountOpen(false)}><section className="account-sheet api-key-sheet" role="dialog" aria-modal="true" aria-label="账号与 API 密钥" onClick={e=>e.stopPropagation()}><div className="sheet-handle"/><header><div><span className="mini-label">当前账号</span><h2>{access.name}</h2></div><button onClick={()=>setAccountOpen(false)} aria-label="关闭"><X size={20}/></button></header><p className="account-sheet-note">四个密钥仅供这个邮箱账号使用，会加密保存且不会再次显示明文。留空表示保留现有密钥。</p><div className="api-key-list">{(Object.keys(apiKeyLabels) as ApiKeyName[]).map(name=><label key={name}><span><strong>{apiKeyLabels[name]}</strong><small>{apiKeyStatus?.[name]?.configured?`已配置 · 尾号 ${apiKeyStatus[name].last4}`:"尚未配置"}</small></span><div><input type="password" autoComplete="new-password" value={apiKeyValues[name]} onChange={e=>setApiKeyValues(values=>({...values,[name]:e.target.value}))} placeholder={apiKeyStatus?.[name]?.configured?"输入新密钥以替换":"输入 API 密钥"}/>{apiKeyStatus?.[name]?.configured&&<button type="button" className="danger-text" disabled={apiKeyBusy} onClick={()=>void saveApiKeys({[name]:null})}>移除</button>}</div></label>)}</div>{apiKeyError&&<p className="analysis-error" role="alert">{apiKeyError}</p>}<div className="api-key-actions"><button className="primary-button" disabled={apiKeyBusy} onClick={()=>void saveApiKeys()}>{apiKeyBusy?"保存中…":"保存密钥"}</button><button className="secondary-button account-sheet-signout" onClick={()=>void signOut()}><LogOut size={17}/>退出登录</button></div></section></div>}
     {toast && <div className="toast" role="status"><Check size={17}/>{toast}</div>}
   </div>;
 }

@@ -1,3 +1,4 @@
+import { getUserApiKeys } from "@/lib/user-api-keys";
 import { getAIProvider } from "../../../../lib/ai";
 import { blocksToText, normalizeFacts } from "../../../../lib/content";
 import { commonSenseFactIssues } from "../../../../lib/copy-quality";
@@ -20,7 +21,7 @@ export async function POST(request:Request){
     if(!topic)return json({error:"请选择产品或输入主题"},{status:400});
     const style=await db().prepare("SELECT stable_preferences FROM style_dna WHERE user_id=?").bind(user.userId).first<{stable_preferences:string}>();
     const context:GenerationContext={topic,facts,salesIntensity:intensity,stylePreferences:labels(style?.stable_preferences)};
-    const ai=getAIProvider(),strategies=await ai.generateTopicStrategies(context);
+    const ai=getAIProvider((await getUserApiKeys(user.userId)).deepseek),strategies=await ai.generateTopicStrategies(context);
     // 三个方向彼此独立：一个方向没通过事实检查，不应该让另外两个一起失败。
     const settled=await Promise.allSettled(strategies.map(async strategy=>{
       const draft=await ai.generateCopy(context,strategy);

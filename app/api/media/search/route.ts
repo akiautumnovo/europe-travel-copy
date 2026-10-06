@@ -2,6 +2,7 @@ import { z } from "zod";
 import { getMediaProvider } from "../../../../lib/media";
 import { reviewMediaPhotos } from "../../../../lib/media/review";
 import { json, requireApiUser } from "../../_shared";
+import { getUserApiKeys } from "../../../../lib/user-api-keys";
 
 const schema = z.object({
   query: z.string().min(2).max(120),
@@ -23,12 +24,12 @@ export async function POST(request: Request) {
     return json({ code: "INVALID_REQUEST", error: "请输入 2-120 个字符的搜索词" }, { status: 400 });
   }
   try {
-    const provider = getMediaProvider();
+    const provider = getMediaProvider((await getUserApiKeys(auth.userId)).pixabay);
     if (!provider) {
       return json({
         configured: false,
         photos: [],
-        message: "真实图片搜索尚未配置，可以先使用本人素材。",
+        message: "请先在账号设置中配置 Pixabay API 密钥，也可以继续使用本人素材。",
       });
     }
 

@@ -1,3 +1,4 @@
+import { getUserApiKeys } from "@/lib/user-api-keys";
 import { z } from "zod";
 import { getAIProvider } from "../../../../lib/ai";
 import { blocksToText,normalizeFacts,parseJson } from "../../../../lib/content";
@@ -26,7 +27,7 @@ export async function POST(request:Request){
   if(inspiration?.angleType==="current"&&inspiration.verification==="verified"&&!sources.length)return json({error:"近期信息缺少可靠来源，请刷新灵感后再试"},{status:422});
   const style=await db().prepare("SELECT stable_preferences FROM style_dna WHERE user_id=?").bind(user.userId).first<{stable_preferences:string}>();
   const context:GenerationContext={topic,facts,salesIntensity:1,stylePreferences:labels(style?.stable_preferences),angleType:inspiration?.angleType||"custom",sources};
-  const ai=getAIProvider(),strategy={type:"advisor" as const,title:"产品知识分享",approach:"前半段知识内容，后半段自然连接产品方案",opening:topic};
+  const ai=getAIProvider((await getUserApiKeys(user.userId)).deepseek),strategy={type:"advisor" as const,title:"产品知识分享",approach:"前半段知识内容，后半段自然连接产品方案",opening:topic};
   let draft=normalizeVisualSymbols(await ai.generateCopy(context,strategy)),verification=await ai.verifyCopy(context,productFactDraft(draft));
   const currentLength=()=>blocksToText(draft.blocks).replace(/\s/g,"").length;
   // 触发「唯一一次质量修复」的条件：结构问题、常识问题、过渡生硬、字数明显偏离、版式偏好（产品段过早/缺失）、条款类信息。
