@@ -72,7 +72,7 @@ export async function GET(request: Request) {
         ...row,
         folderId: row.folderId ?? null,
         metadata,
-        imageUrl: row.storagePath ? `/api/assets/${row.id}/file` : row.externalUrl,
+        imageUrl: row.storagePath ? `/api/assets/${row.id}/file?v=${encodeURIComponent(String(metadata.croppedAt||metadata.downloadedAt||row.createdAt))}` : row.externalUrl,
         usedBy: usage.get(row.id) ?? [],
       };
     }),

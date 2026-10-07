@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { CheckSquare, ChevronRight, ExternalLink, FolderInput, FolderOpen, FolderPlus, ImagePlus, Link2, Pencil, Square, Trash2, Upload, X } from "lucide-react";
+import { CheckSquare, ChevronRight, Download, ExternalLink, FolderInput, FolderOpen, FolderPlus, ImagePlus, Link2, Pencil, Square, Trash2, Upload, X } from "lucide-react";
 import ConfirmDialog from "@/components/confirm-dialog";
 import { readApiError } from "@/lib/friendly-error";
 import {
@@ -22,6 +22,7 @@ type Asset = {
   riskLevel: "green" | "yellow" | "red";
   folderId: string | null;
   metadata: Record<string, unknown>;
+  storagePath?: string | null;
   usedBy: string[];
 };
 
@@ -32,6 +33,7 @@ type Dialog =
   | { kind: "moveAsset"; asset: Asset }
   | { kind: "deleteFolder"; folder: AssetFolder }
   | { kind: "deleteAsset"; asset: Asset }
+  | { kind: "moveSelected" }
   | { kind: "deleteSelected" };
 
 /** 把文件夹按层级展开成下拉选项（用全角空格缩进，中文界面里最直观）。 */
@@ -171,12 +173,15 @@ export default function AssetLibrary({ notify }: { notify: (message: string) => 
         notify(await readApiError(r, "移动失败"));
         return;
       }
+      setDialog(null);
       await load();
       notify("已移动");
     } catch {
       notify("移动失败，请重试");
     }
   }
+
+  async function moveSelected(folderId:string|null){setBusy(true);try{const r=await fetch("/api/assets/batch",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({ids:selectedIds,folderId})});if(!r.ok){notify(await readApiError(r,"批量移动失败"));return}const data=await r.json() as {moved?:number};setDialog(null);setSelectedIds([]);setSelectMode(false);await load();notify(`已移动 ${data.moved||0} 张素材`)}catch{notify("批量移动失败，请重试")}finally{setBusy(false)}}
 
   async function deleteAsset(assetId: string) {
     try {
@@ -305,7 +310,7 @@ export default function AssetLibrary({ notify }: { notify: (message: string) => 
         confirm: () => renameFolder(dialog.folder),
       };
     }
-    if (dialog.kind === "moveFolder" || dialog.kind === "moveAsset") {
+    if (dialog.kind === "moveFolder" || dialog.kind === "moveAsset" || dialog.kind === "moveSelected") {
       const isFolder = dialog.kind === "moveFolder";
       const folder = isFolder ? dialog.folder : null;
       const exclude = folder ? folderSubtreeIds(folders, folder.id) : [];
@@ -313,10 +318,11 @@ export default function AssetLibrary({ notify }: { notify: (message: string) => 
       const confirm = () => {
         const target = pickerValue || null;
         if (isFolder) void moveFolder(folder!, target);
-        else void moveAsset(dialog.asset.id, target);
+        else if(dialog.kind==="moveAsset")void moveAsset(dialog.asset.id, target);
+        else void moveSelected(target);
       };
       return {
-        title: isFolder ? `移动「${folder!.name}」` : `移动「${dialog.asset.sourceName}」`,
+        title: isFolder ? `移动「${folder!.name}」` : dialog.kind==="moveAsset"?`移动「${dialog.asset.sourceName}」`:`移动所选 ${selectedIds.length} 张素材`,
         description: isFolder ? "不能移动到它自己或它的子文件夹里。" : undefined,
         field: (
           <div className="dialog-field">
@@ -450,6 +456,7 @@ export default function AssetLibrary({ notify }: { notify: (message: string) => 
                         ? "外部链接"
                         : "本人素材"}
                 </small>
+                {typeof asset.metadata?.croppedAt==="string"&&<small className="asset-used">朋友圈方图 · 1200 × 1200</small>}
                 {asset.sourceUrl && (
                   <a href={asset.sourceUrl} target="_blank" rel="noreferrer">查看来源 <ExternalLink size={13} /></a>
                 )}
@@ -460,6 +467,7 @@ export default function AssetLibrary({ notify }: { notify: (message: string) => 
                   <option value="red">红色风险</option>
                 </select>
                 {!selectMode&&<div className="asset-card-actions">
+                  {asset.storagePath&&<a className="mini-button" href={asset.imageUrl} download={asset.sourceName}><Download size={15}/>下载</a>}
                   <button className="mini-button" onClick={() => openDialog({ kind: "moveAsset", asset })}><FolderInput size={15} />移动</button>
                   <button className="mini-button danger" onClick={() => openDialog({ kind: "deleteAsset", asset })}><Trash2 size={15} />删除</button>
                 </div>}
@@ -482,7 +490,7 @@ export default function AssetLibrary({ notify }: { notify: (message: string) => 
 
       {loadError && <p className="analysis-error" role="alert">{loadError}</p>}
 
-      {selectMode&&<div className="asset-batch-bar"><span>已选择 <strong>{selectedIds.length}</strong> 张</span><button className="text-button" onClick={()=>setSelectedIds(selectedIds.length===currentAssets.length?[]:currentAssets.map(asset=>asset.id))}>{selectedIds.length===currentAssets.length?"取消全选":"选择当前页全部"}</button><button className="primary-button danger-solid" disabled={!selectedIds.length||busy} onClick={()=>setDialog({kind:"deleteSelected"})}><Trash2 size={17}/>删除所选</button></div>}
+      {selectMode&&<div className="asset-batch-bar"><span>已选择 <strong>{selectedIds.length}</strong> 张</span><button className="text-button" onClick={()=>setSelectedIds(selectedIds.length===currentAssets.length?[]:currentAssets.map(asset=>asset.id))}>{selectedIds.length===currentAssets.length?"取消全选":"选择当前页全部"}</button><button className="secondary-button" disabled={!selectedIds.length||busy} onClick={()=>openDialog({kind:"moveSelected"})}><FolderInput size={17}/>移动所选</button><button className="primary-button danger-solid" disabled={!selectedIds.length||busy} onClick={()=>setDialog({kind:"deleteSelected"})}><Trash2 size={17}/>删除所选</button></div>}
 
       {body && (
         <div className="confirm-backdrop" onClick={() => setDialog(null)}>

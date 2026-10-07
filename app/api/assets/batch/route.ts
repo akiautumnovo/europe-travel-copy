@@ -37,6 +37,16 @@ export async function POST(request:Request){
 }
 
 const deleteSchema=z.object({ids:z.array(z.string().min(1)).min(1).max(100)});
+const moveSchema=z.object({ids:z.array(z.string().min(1)).min(1).max(100),folderId:z.string().nullable()});
+export async function PATCH(request:Request){
+ const user=await requireApiUser(request);if(user instanceof Response)return user;
+ let input:z.infer<typeof moveSchema>;try{input=moveSchema.parse(await request.json())}catch{return json({error:"请选择要移动的素材和目标文件夹"},{status:400})}
+ const folderId=await resolveFolderId(user.userId,input.folderId),ids=[...new Set(input.ids)],rows:Array<{id:string}>=[];
+ for(const id of ids){const row=await db().prepare("SELECT id FROM assets WHERE id=? AND user_id=?").bind(id,user.userId).first<{id:string}>();if(row)rows.push(row)}
+ if(!rows.length)return json({error:"所选素材不存在或已经删除"},{status:404});
+ await db().batch(rows.map(row=>db().prepare("UPDATE assets SET folder_id=? WHERE id=? AND user_id=?").bind(folderId,row.id,user.userId)));
+ return json({ok:true,moved:rows.length,folderId});
+}
 export async function DELETE(request:Request){
  const user=await requireApiUser(request);if(user instanceof Response)return user;
  let input:z.infer<typeof deleteSchema>;try{input=deleteSchema.parse(await request.json())}catch{return json({error:"请选择要删除的素材"},{status:400})}

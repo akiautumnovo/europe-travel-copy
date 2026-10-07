@@ -61,6 +61,9 @@ export async function prepareAdoptedCropAssets(contentId:string,userId:string):P
   for(const id of [...new Set(ids)]){
     const row=await db().prepare("SELECT id,asset_type as assetType,storage_path as storagePath,external_url as externalUrl,source_name as sourceName,author,source_url as sourceUrl,license_status as licenseStatus,risk_level as riskLevel,metadata FROM assets WHERE id=? AND user_id=?").bind(id,userId).first<SelectedAsset>();
     if(!row)continue;
+    let existingMetadata:Record<string,unknown>={};try{existingMetadata=JSON.parse(row.metadata||"{}")}catch{}
+    // 已完成 1:1 裁切的素材会直接复用。历史内容再次编辑、采用时不应重复弹出裁切器。
+    if(row.storagePath&&typeof existingMetadata.croppedAt==="string")continue;
     try{await materialize(row,userId)}catch(error){warnings.push(`${row.sourceName}：${error instanceof Error?error.message:"下载失败"}`);continue}
     const ready=await db().prepare("SELECT storage_path as storagePath FROM assets WHERE id=? AND user_id=?").bind(id,userId).first<{storagePath:string|null}>();
     if(ready?.storagePath)assets.push({id:row.id,sourceName:row.sourceName,imageUrl:`/api/assets/${row.id}/file`,author:row.author||undefined,sourceUrl:row.sourceUrl||undefined,riskLevel:row.riskLevel});
