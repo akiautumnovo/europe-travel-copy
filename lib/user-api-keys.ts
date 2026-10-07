@@ -1,9 +1,9 @@
 import { config, db } from "./bindings";
 import { parseJson } from "./content";
 
-export type UserApiKeys = { deepseek: string; bocha: string; tavily: string; pixabay: string };
+export type UserApiKeys = { deepseek: string; bocha: string; tavily: string; pixabay: string; unsplash:string };
 export type UserApiKeyName = keyof UserApiKeys;
-const NAMES: UserApiKeyName[] = ["deepseek", "bocha", "tavily", "pixabay"];
+const NAMES: UserApiKeyName[] = ["deepseek", "bocha", "tavily", "pixabay", "unsplash"];
 type Sealed = { v: 1; iv: string; data: string };
 
 const bytesToBase64 = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64");
@@ -63,3 +63,5 @@ export async function updateUserApiKeys(userId: string, patch: Partial<Record<Us
   return userApiKeyStatus(userId);
 }
 
+export async function getUserMediaProvider(userId:string):Promise<"pixabay"|"unsplash">{const settings=await readSettings(userId);return settings.mediaProvider==="unsplash"?"unsplash":"pixabay"}
+export async function updateUserMediaProvider(userId:string,mediaProvider:"pixabay"|"unsplash"){const settings=await readSettings(userId);settings.mediaProvider=mediaProvider;await db().prepare("UPDATE profiles SET settings=?,updated_at=? WHERE id=?").bind(JSON.stringify(settings),new Date().toISOString(),userId).run();return mediaProvider}

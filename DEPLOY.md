@@ -48,7 +48,7 @@ BASE_URL=https://travel-copy-assistant.app.workbuddy.host node scripts/smoke-tes
 |---|---|---|
 | 邮箱白名单、登录方式、Provider 顺序 | `config/app.env` | 需要 |
 | 门禁签名及账号密钥加密密钥 `ACCESS_SECRET` | `.env.production` | 需要 |
-| DeepSeek、博查、Tavily、Pixabay 密钥 | 登录后的账号设置 | 每个白名单邮箱分别录入 |
+| DeepSeek、博查、Tavily、Pixabay、Unsplash 密钥与图库选择 | 登录后的账号设置 | 每个白名单邮箱分别录入；图片搜索只调用当前选择的图库 |
 
 - `config/app.env` 会进 git；`.env.production` 被 `.gitignore` 的 `.env*` 覆盖，**不会提交**，但会随源码上传到应用沙箱。
 - 两者的值都由 `scripts/load-env.mjs` 在启动时载入（顺序：`.dev.vars` → `.env.production` → `config/app.env`，先载入的优先）。本地调试改 `.dev.vars` 即可，互不影响。
@@ -111,7 +111,7 @@ cp ~/.europe-travel-copy-data/app.db backup-$(date +%F).db
 | 打开链接是登录页、输邮箱说不在名单 | 把邮箱加进 `config/app.env` 的 `ALLOWED_EMAILS` 再发布 |
 | 改了代码但线上没变 | 忘了 `npm run build:web`，产物没更新 |
 | 发布报 `fetch failed` | 八成是上传体积过大（`webapp/` 被本地预览写进了缓存）。先 `npm run clean:web-cache` 再发布 |
-| 「API 密钥尚未配置」/ 搜索不生效 | 打开账号设置，为当前邮箱录入 DeepSeek、博查、Tavily、Pixabay 密钥 |
+| 「API 密钥尚未配置」/ 搜索不生效 | 打开账号设置，为当前邮箱录入所需密钥，并确认 Pixabay / Unsplash 图库选择与已配置密钥一致 |
 | 发布时报 "did not become reachable within 60s" | 启动命令里带了构建。`startCmd` 必须是 `npm run serve`，构建要提前在本地做好 |
 | 上传图片失败 | 看返回的 `code`；`ASSET_SAVE_FAILED` 表示写存储或写库失败，日志里有具体原因 |
 | 想确认线上是否健康 | 跑第 2 节的 smoke test，或直接访问 `/api/access` 看 `emailGateEnabled`/`accessMode` |

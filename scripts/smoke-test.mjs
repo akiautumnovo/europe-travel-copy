@@ -79,6 +79,13 @@ const angleTypes = inspiration.data.topics?.map((topic) => topic.angleType).sort
 check("四类产品灵感", inspiration.status === 200 && angleTypes.join(",") === "culture,current,history,resources", angleTypes.join(" / "));
 check("灵感绑定当前产品", inspiration.data.topics?.every((topic) => topic.productId === productId), `${inspiration.data.topics?.length || 0} 条`);
 const selectedInspiration = inspiration.data.topics?.find((topic) => topic.angleType !== "current") || inspiration.data.topics?.[0];
+const knowledgeInspiration = await api("/api/inspiration/today?mode=knowledge&country=ES");
+const knowledgeAngles = knowledgeInspiration.data.topics?.map((topic) => topic.angleType).sort() ?? [];
+check("四类无产品灵感", knowledgeInspiration.status === 200 && knowledgeAngles.join(",") === "culture,current,history,resources" && knowledgeInspiration.data.topics?.every((topic) => topic.productId === null && topic.countryCode === "ES"), knowledgeAngles.join(" / "));
+const selectedKnowledge = knowledgeInspiration.data.topics?.find((topic) => topic.angleType !== "current");
+const knowledgeGeneration = await api("/api/generation/copy", { method: "POST", body: JSON.stringify({ mode: "knowledge", countryCode: "ES", inspirationId: selectedKnowledge?.id }) });
+check("生成无产品知识文案", knowledgeGeneration.status === 201 && knowledgeGeneration.data.facts?.length === 0, knowledgeGeneration.status === 201 ? `V${knowledgeGeneration.data.versionNo}` : JSON.stringify(knowledgeGeneration.data).slice(0, 160));
+const knowledgeContentId = knowledgeGeneration.data.contentId;
 const generation = await api("/api/generation/copy", {
   method: "POST",
   body: JSON.stringify({ productId, inspirationId: selectedInspiration?.id }),
@@ -167,6 +174,7 @@ console.log("=== 9. 风险标记 + 删除路径（batch + 级联）===");
 check("调整素材风险等级（PATCH）", (await api(`/api/assets/${assetId}`, { method: "PATCH", body: JSON.stringify({ riskLevel: "yellow" }) })).status === 200);
 const del = await api(`/api/contents/${contentId}`, { method: "DELETE" });
 check("删除内容", del.status === 200, `剩余 ${(await api("/api/contents")).data.length} 条`);
+if (knowledgeContentId) check("删除知识文案", (await api(`/api/contents/${knowledgeContentId}`, { method: "DELETE" })).status === 200);
 check("删除产品", (await api(`/api/products/${productId}`, { method: "DELETE" })).status === 200);
 check("删除素材", (await api(`/api/assets/${assetId}`, { method: "DELETE" })).status === 200);
 check("删除第二张素材", (await api(`/api/assets/${secondAssetId}`, { method: "DELETE" })).status === 200);

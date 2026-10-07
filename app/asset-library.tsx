@@ -442,6 +442,8 @@ export default function AssetLibrary({ notify }: { notify: (message: string) => 
                 <small>
                   {asset.assetType === "pixabay"
                     ? `Image by ${asset.author} on Pixabay`
+                    : asset.assetType === "unsplash"
+                      ? `Photo by ${asset.author} on Unsplash`
                     : asset.assetType === "pexels"
                       ? `Photo by ${asset.author} on Pexels`
                       : asset.assetType === "external_link"

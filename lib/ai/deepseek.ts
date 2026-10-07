@@ -1,4 +1,4 @@
-import { analysisResultSchema, blockSchema, inspirationDraftSchema, storyboardSchema, strategiesSchema, styleSignalsSchema, verificationSchema, type AnalysisInput, type AnalysisResult, type Draft, type GenerationContext, type InspirationDraft, type InspirationGenerationInput, type RevisionInput, type Storyboard, type Strategy, type StyleSignals, type Verification } from "./types";
+import { analysisResultSchema, blockSchema, inspirationDraftSchema, storyboardSchema, strategiesSchema, styleSignalsSchema, verificationSchema, type AnalysisInput, type AnalysisResult, type Draft, type GenerationContext, type InspirationDraft, type InspirationGenerationInput, type KnowledgeInspirationGenerationInput, type RevisionInput, type Storyboard, type Strategy, type StyleSignals, type Verification } from "./types";
 import { z } from "zod";
 import type { AIProvider } from "./provider";
 
@@ -26,6 +26,9 @@ export class DeepSeekProvider implements AIProvider {
     return result.strategies;
   }
   async generateCopy(input: GenerationContext): Promise<Draft> {
+    if(input.contentMode==="knowledge")return this.callJson(`围绕“${input.countryName}（${input.countryNameEn}）· ${input.topic}”写一篇纯知识分享型朋友圈。只返回 JSON：{"blocks":[{"id":"b1","text":"段落文字","category":"professional_advice|literary|objective_fact"}]}。
+要求：全文目标 220-320 个非空白字符，9-14 行短句，5-14 个 block；使用 5-10 个与内容相关的 Emoji 或【】｜✅✨等视觉符号；只讲所选国家与方向的风景、历史、文化或实用知识；禁止产品、线路、价格、班期、报名、销售 CTA；禁止虚构第一人称亲历、客户故事、带队或职业身份；稳定常识可用但避免没有来源的精确数字和年代；current 方向只能使用可靠来源明确提供的信息；最后一行必须完整。
+方向：${input.angleType}\n主题：${input.topic}\n可靠来源：${JSON.stringify(input.sources||[])}\n风格偏好：${input.stylePreferences.join("；")||"专业、有趣、清楚"}`,lenientDraftSchema,{temperature:.72,system:WRITER_SYSTEM});
     return this.callJson(`写一篇完整的欧洲旅行朋友圈，主题是“${input.topic}”。
 只返回 JSON：{"blocks":[{"id":"b1","text":"段落文字","category":"objective_fact|professional_advice|personal_experience|marketing|literary"}]}。
 全文 220-320 个非空白字符（建议 200-340，不要写成长文），写成 9-14 行短句，归入 5-14 个 block（一行一个 block 也可以）；每个 block 内可用换行分隔短句（JSON 字符串里写 \\n），一行一句、一般不超过 28 字。
@@ -68,7 +71,12 @@ export class DeepSeekProvider implements AIProvider {
   async reviseCopy(input: RevisionInput): Promise<Draft> {
     const locked = input.blocks.filter(b=>input.lockedBlockIds.includes(b.id));
     const scope = input.targetBlockId ? `只允许修改 id=${input.targetBlockId} 的段落，其他段落逐字保留。` : "修改全文，但 lockedBlockIds 中的段落必须逐字保留。";
-    const result = await this.callJson(`${scope}\n修改要求：${input.instruction}\n只返回与输入相同 id、相同顺序的 JSON blocks，每个 block 必须保留 id、text、category 三个字段，category 沿用输入的取值。禁止改变锁定事实，禁止编造经历或数据。
+    if(input.contentMode==="knowledge"){
+      const result=await this.callJson(`${scope}\n修改要求：${input.instruction}\n这是${input.countryName}的纯知识分享朋友圈。只返回与输入相同 id、相同顺序的 JSON blocks，并保留 id、text、category。全文禁止加入产品、线路、价格、班期、报名引导或销售 CTA；禁止虚构第一人称亲历、客户故事、带队或职业身份；current 方向只能使用可靠来源中的信息。保持 9-14 行短句、适量 Emoji、完整结尾，目标 220-320 个非空白字符。\n锁定段落：${JSON.stringify(locked)}\n可靠来源：${JSON.stringify(input.sources||[])}\n当前段落：${JSON.stringify(input.blocks)}`,lenientDraftSchema,{temperature:.7,system:WRITER_SYSTEM});
+      const byId=new Map(input.blocks.map(block=>[block.id,block.category] as const));return{blocks:result.blocks.map(block=>({...block,category:byId.get(block.id)??block.category}))};
+    }
+    const knowledgeRule="";
+    const result = await this.callJson(`${scope}\n修改要求：${input.instruction}\n${knowledgeRule}\n只返回与输入相同 id、相同顺序的 JSON blocks，每个 block 必须保留 id、text、category 三个字段，category 沿用输入的取值。禁止改变锁定事实，禁止编造经历或数据。
 改写后必须保留“短句分行”的排版：一行一个短句、用换行分隔，同类信息用“｜”并列，绝不能改写成大段散文；全文 200-340 个非空白字符、9-14 行；8-14 个 Emoji 或视觉符号，主要放行首做标记并与内容相关（住宿🏨 交通与航班✈️ 餐食🍽️ 门票与官导🎫 价格💰 优惠🎁 风光收束🌇）。产品部分只保留简洁的短句罗列（住宿｜交通与航班｜班期｜门票与官导｜餐食｜价格与优惠），可保留 1 句展开性描写做收束；产品段第一句先承接上文再引出产品，不要生硬转折。**全篇禁止出现保险与保费金额、退改/取消/退款规则与费用、签证费、小费与自费项目、押金、行李与税费、单房差与补差价等条款或附加费用信息，也不要把这类行政条款当成引子或知识点，若原文已有请整行删除**。前半段 category 只能用 literary 或 professional_advice，产品段 category 用 objective_fact 或 marketing。不得出现虚构亲历、职业身份或客户故事，句子和最后一行必须完整。
 锁定段落：${JSON.stringify(locked)}\n锁定事实：${JSON.stringify(input.facts)}\n可靠来源：${JSON.stringify(input.sources||[])}\n当前段落：${JSON.stringify(input.blocks)}`, lenientDraftSchema, { temperature: 0.75, system: WRITER_SYSTEM });
     const byId = new Map(input.blocks.map(b=>[b.id,b.category] as const));
@@ -99,7 +107,10 @@ ${input.retryHint?`\n特别注意：${input.retryHint}\n`:""}
 上一组选题：${JSON.stringify(input.previousTitles)}
 搜索素材：${JSON.stringify(input.sourceSummaries)}`,inspirationDraftSchema);
   }
-async generateStoryboard(text:string):Promise<Storyboard>{return this.callJson(`根据朋友圈文案设计简单视觉故事板。只返回 JSON：{"roles":[{"id":"hero","label":"首图","description":"画面作用","searchTheme":"对应中文主题"}],"searchThemes":[{"label":"中文主题","query":"concise English photo query including exact destination"}]}。要求 6-9 个叙事角色，但只归并为 4-6 个搜索主题；角色必须有首图、大景、生活/人物环境、细节和收尾等不同作用。先识别文案的主要国家和城市，每个 query 都必须包含文案中对应的英文城市名或国家名，不得换成相似的其他国家或城市；没有明确地点时才允许使用泛化欧洲主题。query 只描述真实摄影内容，不生成AI图片，并优先适合朋友圈方形裁切的主体居中构图。文案：${text.slice(0,5000)}`,storyboardSchema)}
+  async generateKnowledgeInspirations(input:KnowledgeInspirationGenerationInput):Promise<InspirationDraft>{return this.callJson(`为${input.countryName}（${input.countryNameEn}）生成四个中文朋友圈知识选题。只返回 JSON：{"topics":[{"title":"","city":"","country":"${input.countryName}","flag":"${input.flag}","reason":"","audience":"旅行知识读者","content_type":"","angle_type":"resources|history|culture|current","source_index":null}]}。
+四条必须全部属于同一个国家并按 resources、history、culture、current 各一条；不得写产品、路线、价格或报名；不得虚构亲历。current 只有搜索素材非空时才能引用 source_index 写近期动态，否则必须改成稳定的实用科普且 source_index=null。稳定知识避免无来源的精确数字和年代。避开上一组标题。
+${input.retryHint||""}\n上一组选题：${JSON.stringify(input.previousTitles)}\n搜索素材：${JSON.stringify(input.sourceSummaries)}`,inspirationDraftSchema)}
+async generateStoryboard(text:string,countryNameEn?:string):Promise<Storyboard>{return this.callJson(`根据朋友圈文案设计简单视觉故事板。只返回 JSON：{"roles":[{"id":"hero","label":"首图","description":"画面作用","searchTheme":"对应中文主题"}],"searchThemes":[{"label":"中文主题","query":"concise English photo query including exact destination"}]}。要求 6-9 个叙事角色，但只归并为 4-6 个搜索主题；角色必须有首图、大景、生活/人物环境、细节和收尾等不同作用。先识别文案的主要国家和城市，每个 query 都必须包含文案中对应的英文城市名或国家名，不得换成相似的其他国家或城市；${countryNameEn?`每个 query 必须显式包含英文国家名 ${countryNameEn}；`:"没有明确地点时才允许使用泛化欧洲主题。"}query 只描述真实摄影内容，不生成AI图片，并优先适合朋友圈方形裁切的主体居中构图。文案：${text.slice(0,5000)}`,storyboardSchema)}
   async summarizeStyleChange(original:Draft,adopted:Draft):Promise<StyleSignals>{return this.callJson(`只分析写作风格差异，不提取或学习任何事实。对比原始选中版本与最终采用版本，识别删除词语、CTA强弱、Emoji、长度、开头和专业表达变化。只返回 JSON：{"signals":[{"label":"偏好描述","flexible":true,"evidence":"差异证据"}],"summary":{"length_change":"","cta_change":"","emoji_change":"","opening_change":"","professional_change":""}}。signals 最多6条；只输出有明确差异支持的偏好，不把地点、价格、日期或产品信息当作风格。原始：${JSON.stringify(original.blocks)}\n最终：${JSON.stringify(adopted.blocks)}`,styleSignalsSchema)}
 
   private async callJson<T>(prompt:string, schema:{parse:(value:unknown)=>T}, options:{temperature?:number; system?:string}={}):Promise<T>{

@@ -4,7 +4,10 @@ export type InspirationAngle="culture"|"history"|"resources"|"current";
 
 export type InspirationTopic={
  id:string;
- productId:string;
+ productId:string|null;
+ mode?:"product"|"knowledge";
+ countryCode?:string;
+ countryNameEn?:string;
  angleType:InspirationAngle;
  city?:string;
  country:string;
@@ -13,7 +16,7 @@ export type InspirationTopic={
  reason:string;
  audience:string;
  contentType:string;
- productRelated:true;
+ productRelated:boolean;
  verification:"verified"|"pending"|"evergreen";
  factId?:string;
  sources?:SearchSource[];

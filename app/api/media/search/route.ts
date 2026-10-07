@@ -2,7 +2,7 @@ import { z } from "zod";
 import { getMediaProvider } from "../../../../lib/media";
 import { reviewMediaPhotos } from "../../../../lib/media/review";
 import { json, requireApiUser } from "../../_shared";
-import { getUserApiKeys } from "../../../../lib/user-api-keys";
+import { getUserApiKeys,getUserMediaProvider } from "../../../../lib/user-api-keys";
 import { mediaSearchCacheKey, readMediaSearchCache, readStaleMediaSearchCache, singleFlightMediaSearch, writeMediaSearchCache } from "../../../../lib/media/search-cache";
 
 const schema = z.object({
@@ -20,12 +20,12 @@ export async function POST(request: Request) {
     return json({ code: "INVALID_REQUEST", error: "请输入 2-120 个字符的搜索词" }, { status: 400 });
   }
   try {
-    const provider = getMediaProvider((await getUserApiKeys(auth.userId)).pixabay);
+    const keys=await getUserApiKeys(auth.userId),providerName=await getUserMediaProvider(auth.userId),provider = getMediaProvider(providerName,keys[providerName]);
     if (!provider) {
       return json({
         configured: false,
         photos: [],
-        message: "请先在账号设置中配置 Pixabay API 密钥，也可以继续使用本人素材。",
+        message: `请先在账号设置中配置 ${providerName==="unsplash"?"Unsplash":"Pixabay"} API 密钥，也可以继续使用本人素材。`,
       });
     }
 
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
         if(secondHit)return secondHit;
         const result = await provider.searchPhotos(input.query, {
           // 不再按比例筛选，取一批做地点冲突审查后按相关性排序即可，没必要拉满。
-          perPage: 60,
+          perPage: 30,
           orientation,
         });
         // 只缓存可公开复用的图片结果，不把某个账号的额度响应头共享给其他账号。

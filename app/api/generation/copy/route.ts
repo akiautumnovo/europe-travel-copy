@@ -8,7 +8,9 @@ import type { InspirationTopic } from "../../../../lib/inspiration";
 import { labels } from "../../../../lib/style";
 import { db,json,requireApiUser } from "../../_shared";
 
-const schema=z.object({productId:z.string().min(1),inspirationId:z.string().min(1).optional(),customTopic:z.string().trim().min(4).max(160).optional()}).refine(value=>Boolean(value.inspirationId||value.customTopic),"请选择灵感角度或输入自定义主题");
+const productSchema=z.object({mode:z.literal("product").optional(),productId:z.string().min(1),inspirationId:z.string().min(1).optional(),customTopic:z.string().trim().min(4).max(160).optional()}).refine(value=>Boolean(value.inspirationId||value.customTopic),"请选择灵感角度或输入自定义主题");
+const knowledgeSchema=z.object({mode:z.literal("knowledge"),countryCode:z.string().length(2),inspirationId:z.string().min(1)});
+const schema=z.union([knowledgeSchema,productSchema]);
 // 策略调整：系统只拦「常识类」问题。价格、日期、天数、住宿、航班、名额等数据类内容不再由系统判定对错，
 // 改由生成页展示「已锁定产品事实」，用户自行比对判断（见 lib/copy-quality.ts 的 commonSenseFactIssues）。
 class FactCheckError extends Error{}
@@ -17,6 +19,23 @@ export async function POST(request:Request){
  const user=await requireApiUser(request);if(user instanceof Response)return user;
  try{
   const input=schema.parse(await request.json());
+  if(input.mode==="knowledge"){
+   const profile=await db().prepare("SELECT settings FROM profiles WHERE id=?").bind(user.userId).first<{settings:string}>(),settings=parseJson<Record<string,unknown>>(profile?.settings||"{}",{}),cache=parseJson<Record<string,{country?:{code:string;name:string;nameEn:string};topics?:InspirationTopic[]}>>(JSON.stringify(settings.dailyKnowledgeInspirationByCountry||{}),{});
+   const daily=Object.values(cache).find(item=>item.country?.code===input.countryCode&&item.topics?.some(topic=>topic.id===input.inspirationId)),inspiration=daily?.topics?.find(topic=>topic.id===input.inspirationId);
+   if(!daily?.country||!inspiration)return json({error:"这条国家灵感已过期，请返回今日灵感重新选择"},{status:409});
+   const sources=(inspiration.sources||[]).map(source=>({title:source.title,content:source.content,institution:source.institution,url:source.url}));
+   if(inspiration.angleType==="current"&&inspiration.verification==="verified"&&!sources.length)return json({error:"近期信息缺少可靠来源，请刷新灵感后再试"},{status:422});
+   const style=await db().prepare("SELECT stable_preferences FROM style_dna WHERE user_id=?").bind(user.userId).first<{stable_preferences:string}>(),context:GenerationContext={topic:inspiration.title,facts:[],salesIntensity:0,stylePreferences:labels(style?.stable_preferences),angleType:inspiration.angleType,sources,contentMode:"knowledge",countryCode:daily.country.code,countryName:daily.country.name,countryNameEn:daily.country.nameEn};
+   const ai=getAIProvider((await getUserApiKeys(user.userId)).deepseek),strategy={type:"advisor" as const,title:"国家知识分享",approach:"纯知识科普",opening:inspiration.title};let draft=normalizeVisualSymbols(await ai.generateCopy(context,strategy));
+   const length=()=>blocksToText(draft.blocks).replace(/\s/g,"").length,initialLength=length();let quality=copyQualityIssues(draft);
+   if(initialLength<180||initialLength>360||quality.length){draft=normalizeVisualSymbols(await ai.reviseCopy({...context,blocks:draft.blocks,lockedBlockIds:[],instruction:`把全文调整到 220-320 个非空白字符，保持纯知识分享、9-14 行短句、5-10 个视觉符号和完整结尾；闭合全部括号；不要加入产品、价格、班期、报名或销售引导。当前约 ${initialLength} 字。${quality.join("；")}`}));quality=copyQualityIssues(draft)}
+   if(quality.length)return json({code:"COPY_QUALITY_FAILED",error:`文案完整性检查未通过：${quality.join("；")}`},{status:422});
+   const verification=await ai.verifyCopy(context,draft),warnings=[...reviewWarnings(draft),...verification.fact_issues,...verification.naturalness_issues];if(length()<220||length()>320)warnings.unshift(`当前约 ${length()} 字，建议发布前调整到 220-320 字`);
+   const id=crypto.randomUUID(),now=new Date().toISOString(),topicMeta={mode:"knowledge",country:daily.country,inspiration};
+   await db().prepare("INSERT INTO contents (id,user_id,product_id,topic_title,topic_meta,source_input,sales_intensity,status,product_snapshot,fingerprint,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,user.userId,null,inspiration.title,JSON.stringify(topicMeta),inspiration.title,0,"draft","{}",JSON.stringify({countries:[daily.country.name],theme:inspiration.title,product:null,contentTypes:[inspiration.angleType]}),now,now).run();
+   await db().prepare("INSERT INTO content_versions (id,content_id,user_id,version_no,strategy_type,text_content,blocks,locked_block_ids,change_type,change_instruction,is_adopted,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,0,?)").bind(crypto.randomUUID(),id,user.userId,1,"single",blocksToText(draft.blocks),JSON.stringify(draft.blocks),"[]","initial",inspiration.angleType,now).run();
+   return json({contentId:id,topic:inspiration.title,versionNo:1,draft,verification:{...verification,fact_safe:true,fact_issues:warnings},facts:[]},{status:201});
+  }
   const [product,profile]=await Promise.all([db().prepare("SELECT id,name,facts,ai_analysis FROM products WHERE id=? AND user_id=?").bind(input.productId,user.userId).first<{id:string;name:string;facts:string;ai_analysis:string}>(),db().prepare("SELECT settings FROM profiles WHERE id=?").bind(user.userId).first<{settings:string}>()]);
   if(!product)return json({error:"产品不存在"},{status:404});
   const facts=normalizeFacts(product.facts);if(!facts.length)return json({code:"FACTS_REQUIRED",error:"这个产品还没有锁定事实，请先上传资料并确认事实"},{status:409});
