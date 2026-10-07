@@ -23,6 +23,9 @@ export const styleDna = sqliteTable("style_dna", {
 export const factCache = sqliteTable("fact_cache", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), queryKey: text("query_key").notNull(), claim: text("claim").notNull(), sources: text("sources").notNull().default("[]"), verificationLevel: text("verification_level").notNull(), status: text("status").notNull(), verifiedAt: text("verified_at").notNull(), expiresAt: text("expires_at"), createdAt: text("created_at").notNull(),
 });
+export const mediaSearchCache = sqliteTable("media_search_cache", {
+  cacheKey: text("cache_key").primaryKey(), payload: text("payload").notNull(), createdAt: text("created_at").notNull(), expiresAt: text("expires_at").notNull(),
+});
 export const assets = sqliteTable("assets", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), assetType: text("asset_type").notNull(), storagePath: text("storage_path"), externalUrl: text("external_url"), sourceName: text("source_name").notNull(), author: text("author"), sourceUrl: text("source_url"), licenseStatus: text("license_status").notNull().default("owned"), riskLevel: text("risk_level").notNull().default("green"), tags: text("tags").notNull().default("[]"), metadata: text("metadata").notNull().default("{}"), contentHash:text("content_hash"), folderId:text("folder_id"), createdAt: text("created_at").notNull(),
 });

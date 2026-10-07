@@ -3,16 +3,12 @@ import { getMediaProvider } from "../../../../lib/media";
 import { reviewMediaPhotos } from "../../../../lib/media/review";
 import { json, requireApiUser } from "../../_shared";
 import { getUserApiKeys } from "../../../../lib/user-api-keys";
+import { mediaSearchCacheKey, readMediaSearchCache, readStaleMediaSearchCache, singleFlightMediaSearch, writeMediaSearchCache } from "../../../../lib/media/search-cache";
 
 const schema = z.object({
   query: z.string().min(2).max(120),
   orientation: z.enum(["landscape", "portrait", "square"]).optional(),
 });
-
-function getDefaultCache(): Cache | null {
-  const cacheStorage = globalThis.caches as (CacheStorage & { default?: Cache }) | undefined;
-  return cacheStorage?.default ?? null;
-}
 
 export async function POST(request: Request) {
   const auth=await requireApiUser(request);
@@ -33,31 +29,36 @@ export async function POST(request: Request) {
       });
     }
 
-    // 缓存 key 必须带 provider，否则切换图库后会命中另一家的旧结果；v=3 起不再按比例筛选。
+    // Node 持久化缓存：provider、检索算法版本、搜索词和方向共同决定命中范围。
     const orientation = input.orientation;
-    const cacheKey = new Request(
-      `https://media-cache.local/search?v=3&p=${provider.name}&q=${encodeURIComponent(input.query.toLowerCase())}&o=${orientation ?? "all"}`,
-    );
-    const cache = getDefaultCache();
-    const cached = cache ? await cache.match(cacheKey) : undefined;
+    const cacheKey = mediaSearchCacheKey(provider.name,input.query,orientation);
+    const cached = await readMediaSearchCache(cacheKey);
     if (cached) {
-      const data = (await cached.json()) as Record<string, unknown>;
-      return json({ ...data, cached: true, configured: true, provider: provider.name });
+      return json({ ...cached, cached: true, configured: true, provider: provider.name });
     }
 
-    const result = await provider.searchPhotos(input.query, {
-      // 不再按比例筛选，取一批做地点冲突审查后按相关性排序即可，没必要拉满。
-      perPage: 60,
-      orientation,
-    });
-    const reviewed = { ...result, photos: reviewMediaPhotos(input.query, result.photos, 10) };
-    if (cache) {
-      const response = Response.json(reviewed, {
-        headers: { "cache-control": "public, max-age=86400" },
+    try {
+      const reviewed=await singleFlightMediaSearch(cacheKey,async()=>{
+        // 双检：等待同请求期间，另一个实例可能已经写入 SQLite。
+        const secondHit=await readMediaSearchCache(cacheKey);
+        if(secondHit)return secondHit;
+        const result = await provider.searchPhotos(input.query, {
+          // 不再按比例筛选，取一批做地点冲突审查后按相关性排序即可，没必要拉满。
+          perPage: 60,
+          orientation,
+        });
+        // 只缓存可公开复用的图片结果，不把某个账号的额度响应头共享给其他账号。
+        const value = { photos: reviewMediaPhotos(input.query, result.photos, 10) } as Record<string,unknown>;
+        await writeMediaSearchCache(cacheKey,value);
+        return value;
       });
-      await cache.put(cacheKey, response.clone());
+      return json({ ...reviewed, cached: false, configured: true, provider: provider.name });
+    } catch(error) {
+      // 外部图库短暂失败时优先返回最近一次旧结果，避免重试继续消耗额度。
+      const stale=await readStaleMediaSearchCache(cacheKey);
+      if(stale)return json({ ...stale, cached: true, stale: true, configured: true, provider: provider.name });
+      throw error;
     }
-    return json({ ...reviewed, configured: true, provider: provider.name });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     return json(

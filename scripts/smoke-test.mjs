@@ -214,7 +214,7 @@ if (isLocal) {
   console.log("=== 11. 数据留痕（直接查本地 SQLite）===");
   const { DatabaseSync } = await import("node:sqlite");
   const db = new DatabaseSync(".data/app.db");
-  for (const table of ["profiles", "products", "contents", "content_versions", "style_dna", "assets", "asset_folders", "fact_cache"]) {
+  for (const table of ["profiles", "products", "contents", "content_versions", "style_dna", "assets", "asset_folders", "fact_cache", "media_search_cache"]) {
     line(table, db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n);
   }
 } else {
