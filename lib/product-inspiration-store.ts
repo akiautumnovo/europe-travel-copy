@@ -25,7 +25,8 @@ export async function productInspiration(userId:string,productId:string,refresh=
   if(provider)try{const result=await provider.search(`${product.name} ${today.slice(0,4)} 旅游 近期 官方 信息`,{maxResults:8,depth:"advanced"});sources=result.sources.filter(source=>source.tier<=3&&/travel|touris|visa|rail|train|flight|museum|visitor|festival|event|旅游|签证|铁路|航班|博物馆|活动/i.test(`${source.title} ${source.content}`)).slice(0,3)}catch{/* 近期角度自动降级为稳定科普 */}
   const topics=await buildProductInspirations({id:product.id,name:product.name,facts,productSummary:analysis.product_summary||""},sources,previous?.topics?.map(topic=>topic.title)||[],refreshCount,apiKeys.deepseek||"");
   const daily:Daily={date:today,productId,reason:sources.length?`围绕“${product.name}”整理了人文、历史、旅游资源和近期信息四个角度。`:`围绕“${product.name}”整理了三类目的地知识与一条稳定实用科普。`,topics,refreshCount,algorithmVersion:4};
-  cache[productId]=daily;settings.dailyInspirationByProduct=cache;
-  await db().prepare("UPDATE profiles SET settings=?,updated_at=? WHERE id=?").bind(JSON.stringify(settings),new Date().toISOString(),userId).run();
+  cache[productId]=daily;
+  // 只原子更新产品灵感字段。产品灵感与国家知识灵感可能并发完成，整体覆写 settings 会让后完成的请求抹掉另一份缓存。
+  await db().prepare("UPDATE profiles SET settings=json_set(COALESCE(NULLIF(settings,''),'{}'),'$.dailyInspirationByProduct',json(?)),updated_at=? WHERE id=?").bind(JSON.stringify(cache),new Date().toISOString(),userId).run();
   return{...daily,lockedFactCount:facts.length,searchConfigured:Boolean(provider)};
 }
