@@ -15,6 +15,9 @@ const systemPrompt = `你是欧洲旅游产品资料分析助手。只提取输�
 必须只返回 JSON，结构为：{"hard_facts":[{"field":"","value":"","source_quote":"","confidence":0.0,"requires_confirmation":true,"freshness":"current|time_sensitive|unknown","status":"pending"}],"subjective_claims":[],"uncertain_items":[],"product_summary":"","possible_content_angles":[]}。
 source_quote 必须是输入原文中的短句。未出现的信息应放入 uncertain_items。不要把“酒店很好”改成“五星酒店”，不要把月份补成日期，不要把“名额有限”补成具体席位。`;
 
+function normalizeEvidence(value:string){return value.normalize("NFKC").toLocaleLowerCase().replace(/[\s\p{P}\p{S}]+/gu,"")}
+function hasSourceEvidence(source:string,quote:string){const trimmedQuote=quote.trim();if(trimmedQuote&&source.includes(trimmedQuote))return true;const normalizedSource=normalizeEvidence(source),normalizedQuote=normalizeEvidence(trimmedQuote);return normalizedQuote.length>=4&&normalizedSource.includes(normalizedQuote)}
+
 export class DeepSeekProvider implements AIProvider {
   constructor(private config: DeepSeekConfig) {}
 
@@ -110,7 +113,14 @@ ${input.retryHint?`\n特别注意：${input.retryHint}\n`:""}
   async generateKnowledgeInspirations(input:KnowledgeInspirationGenerationInput):Promise<InspirationDraft>{return this.callJson(`为${input.countryName}（${input.countryNameEn}）生成四个中文朋友圈知识选题。只返回 JSON：{"topics":[{"title":"","city":"","country":"${input.countryName}","flag":"${input.flag}","reason":"","audience":"旅行知识读者","content_type":"","angle_type":"resources|history|culture|current","source_index":null}]}。
 四条必须全部属于同一个国家并按 resources、history、culture、current 各一条；不得写产品、路线、价格或报名；不得虚构亲历。current 只有搜索素材非空时才能引用 source_index 写近期动态，否则必须改成稳定的实用科普且 source_index=null。稳定知识避免无来源的精确数字和年代。避开上一组标题。
 ${input.retryHint||""}\n上一组选题：${JSON.stringify(input.previousTitles)}\n搜索素材：${JSON.stringify(input.sourceSummaries)}`,inspirationDraftSchema)}
-async generateStoryboard(text:string,countryNameEn?:string):Promise<Storyboard>{return this.callJson(`根据朋友圈文案设计简单视觉故事板。只返回 JSON：{"roles":[{"id":"hero","label":"首图","description":"画面作用","searchTheme":"对应中文主题"}],"searchThemes":[{"label":"中文主题","query":"concise English photo query including exact destination"}]}。要求 6-9 个叙事角色，但只归并为 4-6 个搜索主题；角色必须有首图、大景、生活/人物环境、细节和收尾等不同作用。先识别文案的主要国家和城市，每个 query 都必须包含文案中对应的英文城市名或国家名，不得换成相似的其他国家或城市；${countryNameEn?`每个 query 必须显式包含英文国家名 ${countryNameEn}；`:"没有明确地点时才允许使用泛化欧洲主题。"}query 只描述真实摄影内容，不生成AI图片，并优先适合朋友圈方形裁切的主体居中构图。文案：${text.slice(0,5000)}`,storyboardSchema)}
+async generateStoryboard(text:string,countryNameEn?:string):Promise<Storyboard>{return this.callJson(`根据朋友圈文案设计一条由 8 个画面组成的视觉故事线。只返回 JSON：{"roles":[{"id":"hero","label":"首图","description":"画面作用","searchTheme":"对应中文主题"}],"searchThemes":[{"label":"中文主题","query":"concise English photo query including exact destination"}]}。
+硬性要求：
+1. roles 必须正好 8 个，按发布顺序串成完整故事：首图吸引、目的地建立、核心景观、历史文化、人文生活、产品体验或行程亮点、氛围细节、收尾余韵；若原文不含某类内容，用原文中另一个真实且不同的视觉点替代。
+2. searchThemes 必须正好 8 个，与 8 个 role 一一对应；每个 role.searchTheme 等于对应主题的 label。禁止把多个叙事点合并成同一个泛化主题。
+3. 8 个 query 的主体、场景或视觉细节必须明显不同，分别覆盖各叙事点；不要反复只搜同一座城市的全景或同一类地标。
+4. 先识别文案中的国家、地区、城市和景点，每个 query 都必须包含对应的英文地点名，不得换成相似的其他国家或城市；${countryNameEn?`每个 query 必须显式包含英文国家名 ${countryNameEn}；`:"没有明确地点时才允许使用泛化欧洲主题。"}
+5. query 只描述真实摄影内容，不生成 AI 图片，并优先选择适合朋友圈方形裁切、主体清楚且靠近画面中央的构图。
+文案：${text.slice(0,5000)}`,storyboardSchema)}
   async summarizeStyleChange(original:Draft,adopted:Draft):Promise<StyleSignals>{return this.callJson(`只分析写作风格差异，不提取或学习任何事实。对比原始选中版本与最终采用版本，识别删除词语、CTA强弱、Emoji、长度、开头和专业表达变化。只返回 JSON：{"signals":[{"label":"偏好描述","flexible":true,"evidence":"差异证据"}],"summary":{"length_change":"","cta_change":"","emoji_change":"","opening_change":"","professional_change":""}}。signals 最多6条；只输出有明确差异支持的偏好，不把地点、价格、日期或产品信息当作风格。原始：${JSON.stringify(original.blocks)}\n最终：${JSON.stringify(adopted.blocks)}`,styleSignalsSchema)}
 
   private async callJson<T>(prompt:string, schema:{parse:(value:unknown)=>T}, options:{temperature?:number; system?:string}={}):Promise<T>{
@@ -123,7 +133,7 @@ async generateStoryboard(text:string,countryNameEn?:string):Promise<Storyboard>{
       ? "这是普通参考内容：hard_facts 必须为空，只提取表达角度、逻辑和灵感。"
       : input.type === "colleague_post"
         ? "这是同事朋友圈：价格、出发日期、剩余名额、航班、酒店、签证和退改即使识别成功也必须 requires_confirmation=true、freshness=time_sensitive。"
-        : "这是正式产品资料：仍需严格以原文为唯一依据。";
+        : "这是正式产品资料：原文是价格、行程、日期、航班、住宿、名额、补偿、退款和其他自定产品条款的权威依据。只要原文明示且 source_quote 可定位，就属于可确认产品事实，不需要外部来源核验；仍严禁补写原文没有的信息。";
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 30_000);
     try {
@@ -138,11 +148,12 @@ async generateStoryboard(text:string,countryNameEn?:string):Promise<Storyboard>{
       const content = payload.choices?.[0]?.message?.content;
       if (!content) throw new Error("AI 没有返回可用内容");
       const parsed = analysisResultSchema.parse(JSON.parse(content.replace(/^```json\s*|\s*```$/g, "")));
-      const evidenced = parsed.hard_facts.filter(f => input.text.includes(f.source_quote.trim()));
-      const rejected = parsed.hard_facts.filter(f => !input.text.includes(f.source_quote.trim())).map(f => `${f.field}：缺少可核对的原文证据`);
+      const evidenced = parsed.hard_facts.filter(f => hasSourceEvidence(input.text,f.source_quote));
+      const rejected = parsed.hard_facts.filter(f => !hasSourceEvidence(input.text,f.source_quote)).map(f => `${f.field}：缺少可核对的原文证据`);
       parsed.hard_facts = evidenced;
       parsed.uncertain_items = [...new Set([...parsed.uncertain_items, ...rejected])];
       if (input.type === "reference") parsed.hard_facts = [];
+      if (input.type === "official_product") parsed.hard_facts = parsed.hard_facts.map(f => ({ ...f, requires_confirmation: false, status: "confirmed" as const }));
       if (input.type === "colleague_post") parsed.hard_facts = parsed.hard_facts.map(f => sensitiveFields.some(k => f.field.includes(k)) ? { ...f, requires_confirmation: true, freshness: "time_sensitive", status: "pending" as const } : f);
       return parsed;
     } catch (error) {
