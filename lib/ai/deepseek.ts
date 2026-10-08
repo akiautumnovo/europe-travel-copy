@@ -10,6 +10,7 @@ const WRITER_SYSTEM = `你是一位专业、准确的欧洲旅行内容创作者
 
 // 高温文案调用时模型偶尔丢 category 字段：宽松解析兜底为 literary，reviseCopy 会再按 id 回填。
 const lenientDraftSchema = z.object({ blocks: z.array(blockSchema.extend({ category: z.enum(["objective_fact","professional_advice","personal_experience","marketing","literary"]).catch("literary") })).min(1) });
+const mediaQuerySchema = z.object({ query: z.string().min(2).max(100) });
 
 const systemPrompt = `你是欧洲旅游产品资料分析助手。只提取输入中明确出现的信息，绝不补全、猜测或把主观形容词升级为具体事实。subjective_claims、uncertain_items、possible_content_angles 的每一项必须是字符串，禁止返回对象。
 必须只返回 JSON，结构为：{"hard_facts":[{"field":"","value":"","source_quote":"","confidence":0.0,"requires_confirmation":true,"freshness":"current|time_sensitive|unknown","status":"pending"}],"subjective_claims":[],"uncertain_items":[],"product_summary":"","possible_content_angles":[]}。
@@ -119,8 +120,16 @@ async generateStoryboard(text:string,countryNameEn?:string):Promise<Storyboard>{
 2. searchThemes 必须正好 8 个，与 8 个 role 一一对应；每个 role.searchTheme 等于对应主题的 label。禁止把多个叙事点合并成同一个泛化主题。
 3. 8 个 query 的主体、场景或视觉细节必须明显不同，分别覆盖各叙事点；不要反复只搜同一座城市的全景或同一类地标。
 4. 先识别文案中的国家、地区、城市和景点，每个 query 都必须包含对应的英文地点名，不得换成相似的其他国家或城市；${countryNameEn?`每个 query 必须显式包含英文国家名 ${countryNameEn}；`:"没有明确地点时才允许使用泛化欧洲主题。"}
-5. query 只描述真实摄影内容，不生成 AI 图片，并优先选择适合朋友圈方形裁切、主体清楚且靠近画面中央的构图。
+5. query 必须全部使用英文，不得包含中文字符；只描述真实摄影内容，不生成 AI 图片，并优先选择适合朋友圈方形裁切、主体清楚且靠近画面中央的构图。
 文案：${text.slice(0,5000)}`,storyboardSchema)}
+  async translateMediaQuery(query:string):Promise<string>{
+    const result=await this.callJson(`将下面的图片搜索词转换为适合 Unsplash 真实摄影搜索的简洁英文关键词。只返回 JSON：{"query":"English photo search keywords"}。
+必须保留原文中的国家、城市、景点和主体；不得添加原文没有的地点或景点；不要写完整句子；不得包含中文。
+搜索词：${query.slice(0,120)}`,mediaQuerySchema,{temperature:0,system:"你是图片搜索词翻译助手。严格输出指定 JSON，不添加 Markdown。"});
+    const normalized=result.query.trim().replace(/\s+/g," ");
+    if(/[\p{Script=Han}]/u.test(normalized))throw new Error("图库搜索词翻译无效");
+    return normalized;
+  }
   async summarizeStyleChange(original:Draft,adopted:Draft):Promise<StyleSignals>{return this.callJson(`只分析写作风格差异，不提取或学习任何事实。对比原始选中版本与最终采用版本，识别删除词语、CTA强弱、Emoji、长度、开头和专业表达变化。只返回 JSON：{"signals":[{"label":"偏好描述","flexible":true,"evidence":"差异证据"}],"summary":{"length_change":"","cta_change":"","emoji_change":"","opening_change":"","professional_change":""}}。signals 最多6条；只输出有明确差异支持的偏好，不把地点、价格、日期或产品信息当作风格。原始：${JSON.stringify(original.blocks)}\n最终：${JSON.stringify(adopted.blocks)}`,styleSignalsSchema)}
 
   private async callJson<T>(prompt:string, schema:{parse:(value:unknown)=>T}, options:{temperature?:number; system?:string}={}):Promise<T>{

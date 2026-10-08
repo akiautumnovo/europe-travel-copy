@@ -10,5 +10,6 @@ export interface AIProvider {
   generateInspirations(input: InspirationGenerationInput): Promise<InspirationDraft>;
   generateKnowledgeInspirations(input: KnowledgeInspirationGenerationInput): Promise<InspirationDraft>;
   generateStoryboard(text:string,countryNameEn?:string):Promise<Storyboard>;
+  translateMediaQuery(query:string):Promise<string>;
   summarizeStyleChange(original:Draft,adopted:Draft):Promise<StyleSignals>;
 }
