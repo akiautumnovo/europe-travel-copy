@@ -238,14 +238,16 @@ html,body{max-width:100%;overflow-x:hidden}.mobile-editor-bar{display:none}.sele
 
 /* 生成页的「已锁定产品事实」对照区：系统不再判定数据对错，改由用户对照这份清单核对 */
 .locked-facts-bar{margin:0 0 14px;padding:14px 16px;border:1px solid #cfe0dd;border-radius:14px;background:#f6fbfa}
-.locked-facts-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:10px}
+.locked-facts-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.locked-facts-head>div{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px}
 .locked-facts-head .mini-label{color:#126d6c}
 .locked-facts-head small{color:var(--muted);font-size:12px;line-height:1.55}
-.locked-facts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:8px}
+.locked-facts-head button{flex:none;display:flex;align-items:center;gap:5px;padding:7px 10px;border:1px solid #bcded9;border-radius:9px;background:#fff;color:#176d69;cursor:pointer;font-size:13px;font-weight:700}
+.locked-facts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:8px;margin-top:10px}
 .locked-fact{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff}
 .locked-fact span{color:#7b8d94;font-size:12px}
 .locked-fact strong{color:#173b4e;font-size:14px;font-weight:700;line-height:1.45;word-break:break-word}
-@media(max-width:700px){.locked-facts-grid{grid-template-columns:1fr}.locked-facts-bar{padding:12px}}
+@media(max-width:700px){.locked-facts-grid{grid-template-columns:1fr}.locked-facts-bar{padding:12px}.locked-facts-head{align-items:stretch;flex-direction:column}.locked-facts-head button{align-self:flex-start}}
 
 /* 本地素材的朋友圈 1:1 裁切器 */
 .cropper-backdrop{position:fixed;z-index:240;inset:0;display:grid;place-items:center;padding:20px;background:#0926368c;backdrop-filter:blur(4px)}
