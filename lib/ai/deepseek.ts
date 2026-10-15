@@ -73,6 +73,45 @@ export class DeepSeekProvider implements AIProvider {
 选题类别：${input.angleType||"custom"}\n主题：${input.topic}\n锁定事实：${JSON.stringify(input.facts)}\n可靠来源：${JSON.stringify(input.sources||[])}\n风格偏好：${input.stylePreferences.join("；")||"专业、有趣、有层次"}`, lenientDraftSchema, { temperature: 0.8, system: WRITER_SYSTEM });
   }
   async reviseCopy(input: RevisionInput): Promise<Draft> {
+    if(input.targetBlockId){
+      const target=input.blocks.find(block=>block.id===input.targetBlockId);
+      if(!target)throw new Error("要修改的段落不存在，请重新选择。");
+      if(input.lockedBlockIds.includes(target.id))throw new Error("请先解锁这一段再修改。");
+      // 单段任务有独立的输出协议，兼容模型返回单个 block 或 blocks 数组。
+      const schema=z.preprocess(value=>{
+        if(!value||typeof value!=="object")return value;
+        const item=value as Record<string,unknown>;
+        const candidates=Array.isArray(value)?value:Array.isArray(item.blocks)?item.blocks:null;
+        if(candidates){
+          const matching=candidates.filter(block=>block&&typeof block==="object"&&block.id===target.id);
+          return matching.length===1?matching[0]:candidates.length===1&&candidates[0]?.id==null?candidates[0]:null;
+        }
+        const block=item.block??item;
+        if(block&&typeof block==="object"&&"id" in block&&block.id!==target.id)return null;
+        return block;
+      },z.object({text:z.string().trim().min(1)}));
+      const prompt=`只修改指定的一段文案，返回 JSON：{"text":"修改后的完整段落"}。不要返回全文，不要添加解释。
+修改要求：${input.instruction}
+保留这一段的事实含义、短句分行和完整句子；不得编造经历、地点、价格、日期或其他数据。全文的长度、段数要求不适用于这一个段落。
+${input.contentMode==="knowledge"?"这是国家知识分享内容，禁止加入产品销售或报名信息。":"产品数据必须以锁定事实为准。"}
+锁定事实：${JSON.stringify(input.facts)}
+可靠来源：${JSON.stringify(input.sources||[])}
+全文上下文（仅供理解，不修改其他段落）：${JSON.stringify(input.blocks)}
+指定段落：${JSON.stringify(target)}`;
+      let revised:{text:string};
+      try{
+        revised=await this.callJson(prompt,schema,{temperature:.5,system:WRITER_SYSTEM});
+      }catch(error){
+        if(!(error instanceof z.ZodError)&&!(error instanceof Error&&error.message==="AI 返回格式无效，请重试"))throw error;
+        try{
+          revised=await this.callJson(prompt+'\n上次返回结构无效。必须只返回 {"text":"修改后的段落"}，text 必须为非空字符串。',schema,{temperature:0,system:WRITER_SYSTEM});
+        }catch(retryError){
+          if(retryError instanceof z.ZodError)throw new Error("单段改写返回格式异常，请重试；原文已保留。");
+          throw retryError;
+        }
+      }
+      return{blocks:input.blocks.map(block=>block.id===target.id?{...block,text:revised.text}:block)};
+    }
     const locked = input.blocks.filter(b=>input.lockedBlockIds.includes(b.id));
     const scope = input.targetBlockId ? `只允许修改 id=${input.targetBlockId} 的段落，其他段落逐字保留。` : "修改全文，但 lockedBlockIds 中的段落必须逐字保留。";
     if(input.contentMode==="knowledge"){
