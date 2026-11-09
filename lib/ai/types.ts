@@ -60,6 +60,8 @@ export type GenerationContext = { topic:string; facts:LockedFact[]; salesIntensi
 export type RevisionInput = GenerationContext & { blocks:DraftBlock[]; lockedBlockIds:string[]; instruction:string; targetBlockId?:string };
 // 产品灵感固定四条：三条目的地内容角度 + 一条从产品资料归纳的卖点。
 // 知识灵感仍是目的地四角度（含近期动态），两者共用同一套字段定义。
+// 国家层面的选题（如西班牙海鲜饭法规、番茄大战）本来就没有具体城市，模型会给空 city。
+// 空值退回国家名，不因此判整批选题无效（其余字段校验不放松）。
 const inspirationTopicBase = {
   title: z.string().min(4).refine(value => (value.match(/[\u4e00-\u9fff]/g) || []).length >= 4, "标题必须为中文"),
   city: z.string().min(1),
@@ -70,11 +72,20 @@ const inspirationTopicBase = {
   content_type: z.string().min(2),
   source_index: z.number().int().min(0).nullable(),
 };
+/** 选题的公共修正：空 city 依次退回国家名、通用国家标签，然后才进严格校验。 */
+function inspirationTopic<T extends z.ZodRawShape>(shape: T) {
+  return z.preprocess((value) => {
+    if (!value || typeof value !== "object") return value;
+    const item = value as Record<string, unknown>;
+    const text = (key: string) => (typeof item[key] === "string" ? (item[key] as string).trim() : "");
+    return { ...item, city: text("city") || text("country") || "全国" };
+  }, z.object(shape));
+}
 export const knowledgeAngleSchema = z.enum(["culture", "history", "resources", "current"]);
 export const productAngleSchema = z.enum(["culture", "history", "resources", "selling_point"]);
-export const inspirationDraftSchema = z.object({ topics: z.array(z.object({ ...inspirationTopicBase, angle_type: knowledgeAngleSchema })).length(4) });
+export const inspirationDraftSchema = z.object({ topics: z.array(inspirationTopic({ ...inspirationTopicBase, angle_type: knowledgeAngleSchema })).length(4) });
 /** 卖点卡片额外带一组可感知支撑点，用于首页卡片的标签行。 */
-export const productInspirationDraftSchema = z.object({ topics: z.array(z.object({ ...inspirationTopicBase, angle_type: productAngleSchema, selling_points: z.array(z.string().trim().min(1)).max(5).default([]) })).length(4) });
+export const productInspirationDraftSchema = z.object({ topics: z.array(inspirationTopic({ ...inspirationTopicBase, angle_type: productAngleSchema, selling_points: z.array(z.string().trim().min(1)).max(5).default([]) })).length(4) });
 export type InspirationDraft = z.infer<typeof inspirationDraftSchema>;
 export type ProductInspirationDraft = z.infer<typeof productInspirationDraftSchema>;
 export type InspirationGenerationInput = { productId:string; productName:string; facts:LockedFact[]; productSummary:string; subjectiveClaims:string[]; contentAngles:string[]; previousTitles:string[]; refreshNo:number; retryHint?:string };
