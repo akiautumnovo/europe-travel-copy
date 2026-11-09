@@ -1,4 +1,4 @@
-import type { AnalysisInput, AnalysisResult, Draft, GenerationContext, InspirationDraft, InspirationGenerationInput, KnowledgeInspirationGenerationInput, RevisionInput, Storyboard, Strategy, StyleSignals, Verification } from "./types";
+import type { AnalysisInput, AnalysisResult, Draft, GenerationContext, InspirationDraft, InspirationGenerationInput, KnowledgeInspirationGenerationInput, ProductInspirationDraft, RevisionInput, Storyboard, Strategy, StyleSignals, Verification } from "./types";
 
 export interface AIProvider {
   extractProduct(input: AnalysisInput): Promise<AnalysisResult>;
@@ -7,7 +7,7 @@ export interface AIProvider {
   generateCopy(input: GenerationContext, strategy: Strategy): Promise<Draft>;
   reviseCopy(input: RevisionInput): Promise<Draft>;
   verifyCopy(input: GenerationContext, draft: Draft, baseline?: Draft): Promise<Verification>;
-  generateInspirations(input: InspirationGenerationInput): Promise<InspirationDraft>;
+  generateInspirations(input: InspirationGenerationInput): Promise<ProductInspirationDraft>;
   generateKnowledgeInspirations(input: KnowledgeInspirationGenerationInput): Promise<InspirationDraft>;
   generateStoryboard(text:string,countryNameEn?:string):Promise<Storyboard>;
   translateMediaQuery(query:string):Promise<string>;

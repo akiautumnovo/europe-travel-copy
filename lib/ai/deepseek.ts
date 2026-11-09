@@ -1,4 +1,4 @@
-import { analysisResultSchema, blockSchema, inspirationDraftSchema, storyboardSchema, strategiesSchema, styleSignalsSchema, verificationSchema, type AnalysisInput, type AnalysisResult, type Draft, type GenerationContext, type InspirationDraft, type InspirationGenerationInput, type KnowledgeInspirationGenerationInput, type RevisionInput, type Storyboard, type Strategy, type StyleSignals, type Verification } from "./types";
+import { analysisResultSchema, blockSchema, inspirationDraftSchema, productInspirationDraftSchema, storyboardSchema, strategiesSchema, styleSignalsSchema, verificationSchema, type AnalysisInput, type AnalysisResult, type Draft, type GenerationContext, type InspirationDraft, type InspirationGenerationInput, type KnowledgeInspirationGenerationInput, type ProductInspirationDraft, type RevisionInput, type Storyboard, type Strategy, type StyleSignals, type Verification } from "./types";
 import { z } from "zod";
 import type { AIProvider } from "./provider";
 
@@ -15,6 +15,54 @@ const mediaQuerySchema = z.object({ query: z.string().min(2).max(100) });
 const systemPrompt = `你是欧洲旅游产品资料分析助手。只提取输入中明确出现的信息，绝不补全、猜测或把主观形容词升级为具体事实。subjective_claims、uncertain_items、possible_content_angles 的每一项必须是字符串，禁止返回对象。
 必须只返回 JSON，结构为：{"hard_facts":[{"field":"","value":"","source_quote":"","confidence":0.0,"requires_confirmation":true,"freshness":"current|time_sensitive|unknown","status":"pending"}],"subjective_claims":[],"uncertain_items":[],"product_summary":"","possible_content_angles":[]}。
 source_quote 必须是输入原文中的短句。未出现的信息应放入 uncertain_items。不要把“酒店很好”改成“五星酒店”，不要把月份补成日期，不要把“名额有限”补成具体席位。`;
+
+/**
+ * 卖点选题的写法：像「认真挑过的人讲一件具体的事」。
+ * 结构与常规产品文案不同——不按住宿｜航班｜餐食罗列，而是把一个卖点拆到能被看见的程度。
+ */
+function sellingPointPrompt(input: GenerationContext) {
+  return `写一篇完整的欧洲旅行朋友圈，主题是“${input.topic}”。这一篇只讲一个产品卖点，读起来像“认真挑过的人讲一件具体的事”，不是产品说明书。
+只返回 JSON：{"blocks":[{"id":"b1","text":"段落文字","category":"objective_fact|professional_advice|personal_experience|marketing|literary"}]}。
+全文 240-360 个非空白字符，写成 9-14 行短句，归入 5-12 个 block（一个 block 内可用 \\n 分多行）；一行一句，一般不超过 26 字，不要把半句话拆成两行。
+
+【这一篇的结构】（卖点选题专用，不要套用常规产品文案的排法）
+1. 开头 1-2 行先给一句断言或一个具体困扰（例如“去哪里看极光，住哪儿很关键”“谁都不想在雪地里站一整夜”），不要用产品名、线路名或“XX之旅”开头
+2. 接着 1-2 行交代做法与取舍：提前多久锁定、为什么这么选。只能写锁定事实支持得出的判断，禁止编造亲历、带队经历、客户故事或销售数据
+3. 中间 3-5 行把卖点拆到“具体到什么程度”：房型、面积、几晚、含什么、在哪儿、看得见什么。能引用锁定事实的原始写法就引用，数字一律不改写
+4. 再给 1-2 行场景画面：白天做什么、晚上回到房间是什么感觉。写动作和画面，不写“舒适”“惬意”“完美”这类形容词
+5. 结尾 1-2 行收束到体验本身（例如“不一定非要赶多少景点，能舒服地住上一晚就已经值得”），不要喊“名额有限”“抓紧报名”
+6. 全篇只讲一个主卖点，其他信息只作辅证，不要按住宿｜航班｜餐食｜门票逐项罗列成清单；如果卖点本身就是“住哪几家、各住几晚”，可以写成 3-4 行并列短句，但不要扩成全项清单
+
+【语感】
+- 短句、有停顿、名词具体；像聊天，不像招商
+- 允许出现 1 处“不是……而是……”或“与其……不如……”的对比句，全篇最多一次，其他地方不要排比
+- 5-9 个 Emoji 或视觉符号，放在句尾点睛或关键行行首（😂 ✨ 🎄 🏨 ❄️ 这类），不要每个 block 都顶一个
+- 禁止：品质保证、性价比高、超值、尊享、深度体验、宝藏、封神、此生必去、治愈、松弛感、天花板、沉浸式、一站式
+
+【对比例子】（只示意语感与排版，禁止照抄其中任何句子、地名或数字）
+坏（说明书腔）：“本行程精选当地特色酒店，住宿品质卓越，让您尽享舒适体验。”
+坏（清单堆砌）：“🏨 住宿｜✈️ 航班｜🍽️ 餐食｜💰 价格”
+好（先给断言，再把细节摊开）：
+“看极光，住哪儿很关键
+谁都不想在雪地里站一整夜😂
+所以这次提前锁了一间木屋
+约90㎡，有壁炉，也有自己的桑拿
+躺着就能看天”
+坏（结尾喊话）：“名额有限，感兴趣的抓紧报名！”
+好（结尾收束）：“旅行不一定非要赶多少景点，能在北极圈里舒服睡一晚就够了”
+
+【事实纪律】（最高优先级，与上文冲突时以事实纪律为准）
+- 价格、日期、行程地点、天数、酒店与房型、面积、航班、名额只能使用锁定事实且不得改写数值；锁定事实里没有的细节一律不写
+- 全篇不要出现保险与保费、退改或取消规则与费用、签证费、小费与自费项目、押金、行李与税费、单房差与补差价
+- 不得虚构第一人称亲历、客户评价、媒体报道或获奖，除非锁定事实原文写了
+- 最后一行必须是完整句，不能停在逗号、冒号、连接词或未闭合括号处
+
+选题类别：selling_point
+主题：${input.topic}
+产品摘要：${input.productSummary||""}
+锁定事实：${JSON.stringify(input.facts)}
+风格偏好：${input.stylePreferences.join("；")||"具体、克制、有画面"}`;
+}
 
 function normalizeEvidence(value:string){return value.normalize("NFKC").toLocaleLowerCase().replace(/[\s\p{P}\p{S}]+/gu,"")}
 function hasSourceEvidence(source:string,quote:string){const trimmedQuote=quote.trim();if(trimmedQuote&&source.includes(trimmedQuote))return true;const normalizedSource=normalizeEvidence(source),normalizedQuote=normalizeEvidence(trimmedQuote);return normalizedQuote.length>=4&&normalizedSource.includes(normalizedQuote)}
@@ -33,6 +81,8 @@ export class DeepSeekProvider implements AIProvider {
     if(input.contentMode==="knowledge")return this.callJson(`围绕“${input.countryName}（${input.countryNameEn}）· ${input.topic}”写一篇纯知识分享型朋友圈。只返回 JSON：{"blocks":[{"id":"b1","text":"段落文字","category":"professional_advice|literary|objective_fact"}]}。
 要求：全文目标 220-320 个非空白字符，9-14 行短句，5-14 个 block；使用 5-10 个与内容相关的 Emoji 或【】｜✅✨等视觉符号；只讲所选国家与方向的风景、历史、文化或实用知识；禁止产品、线路、价格、班期、报名、销售 CTA；禁止虚构第一人称亲历、客户故事、带队或职业身份；稳定常识可用但避免没有来源的精确数字和年代；current 方向只能使用可靠来源明确提供的信息；最后一行必须完整。
 方向：${input.angleType}\n主题：${input.topic}\n可靠来源：${JSON.stringify(input.sources||[])}\n风格偏好：${input.stylePreferences.join("；")||"专业、有趣、清楚"}`,lenientDraftSchema,{temperature:.72,system:WRITER_SYSTEM});
+    // 卖点选题走独立写法：一个卖点讲透，不按常规产品文案的「引子 + 罗列」排。
+    if(input.angleType==="selling_point")return this.callJson(sellingPointPrompt(input),lenientDraftSchema,{temperature:.82,system:WRITER_SYSTEM});
     return this.callJson(`写一篇完整的欧洲旅行朋友圈，主题是“${input.topic}”。
 只返回 JSON：{"blocks":[{"id":"b1","text":"段落文字","category":"objective_fact|professional_advice|personal_experience|marketing|literary"}]}。
 全文 220-320 个非空白字符（建议 200-340，不要写成长文），写成 9-14 行短句，归入 5-14 个 block（一行一个 block 也可以）；每个 block 内可用换行分隔短句（JSON 字符串里写 \\n），一行一句、一般不超过 28 字。
@@ -133,22 +183,30 @@ ${revisionRule}
 检查套路开头、连续问句、空洞形容词、机械CTA、虚构第一人称/客户经历/销售数据、从业身份信息，以及残句、突然截断、前后段过渡生硬、产品事实堆砌。完整但有吸引力的标题和适量 Emoji 不应判为不自然。
 锁定事实：${JSON.stringify(input.facts)}\n可靠来源：${JSON.stringify(input.sources||[])}\n待核验文案：${JSON.stringify(draft.blocks)}`, verificationSchema);
   }
-  async generateInspirations(input:InspirationGenerationInput):Promise<InspirationDraft>{
-    return this.callJson(`根据一个已有旅行产品，生成四个中文朋友圈选题。只返回 JSON：{"topics":[{"title":"","city":"","country":"","flag":"🇪🇺","reason":"","audience":"","content_type":"","angle_type":"culture|history|resources|current","source_index":null}]}。
+  async generateInspirations(input:InspirationGenerationInput):Promise<ProductInspirationDraft>{
+    return this.callJson(`根据一个已有旅行产品，生成四个中文朋友圈选题：三条目的地内容角度（人文风貌、历史文化、旅游资源），一条产品卖点。只返回 JSON：{"topics":[{"title":"","city":"","country":"","flag":"🇪🇺","reason":"","audience":"","content_type":"","angle_type":"culture|history|resources|selling_point","source_index":null,"selling_points":[]}]}。
 硬性要求：
 1. 四条全部围绕同一个产品涉及的国家、地区、线路或旅游资源，禁止随机换到无关国家；
-2. angle_type 必须各出现一次：culture 人文风貌、history 历史文化、resources 旅游资源、current 近期信息；
-3. current 只有在搜索素材非空时才能写近期信息并引用对应 source_index；没有素材时改写为稳定的实用科普，source_index 填 null；
-4. 标题要具体、有吸引力、适合知识分享，不得虚构个人经历或强行写成体验口吻；
+2. angle_type 必须各出现一次：culture 人文风貌、history 历史文化、resources 旅游资源、selling_point 产品卖点；selling_points 只在 selling_point 一条里填写，其余三条一律给空数组；
+3. 前三条写目的地本身：具体到一座城市、一处景观、一段历史或一种人文现象；标题要具体、有吸引力，适合知识分享；不得虚构个人经历，也不要写成体验口吻；source_index 一律为 null；
+4. selling_point 这一条必须由你自己从产品资料里归纳，不是复述产品名，也不是把行程概括成选题：
+   - 先通读锁定事实、产品摘要与主观描述，挑出「客人能具体感知、同行不容易复制」的那一个卖点。判断顺序：住宿的房型、面积与连住晚数 ＞ 稀缺或限定体验（独家通道、季节限定、特殊交通、特殊住宿形态）＞ 行程节奏（同一片区住下来、不折返、双点进出）＞ 餐食与门票的具体规格 ＞ 公开透明的做法（把房型、晚数、含什么写清楚）；
+   - 卖点必须能用锁定事实核对。资料里没有的不要写；只有价格与班期时，就写「这趟的钱花在哪几晚、哪几段路上」这类可验证的角度，不要编造硬件和体验；
+   - title 写成客人会想点开的画面句，必须带上具体的东西（房型名、面积、晚数、体验名或规格），不超过 22 个字；
+   - reason 用一句话说明这个卖点为什么值得写，并引用锁定事实里的原始写法（例如“约90㎡”“连住2晚”“私人桑拿”），不要用形容程度的词代替事实；
+   - selling_points 填 3 条短语（每条 6-14 个字），是这条卖点的可感知支撑：房型规格、含什么、在哪儿看得见什么、和常规做法差在哪；
+   - content_type 填卖点类型，如「住宿卖点」「体验卖点」「稀缺性卖点」「透明承诺」；
+   - 禁止「品质保证」「性价比高」「超值」「尊享」「深度体验」「精选酒店」这类无法验证的空话；
 5. 稳定常识可以作为角度，但不要编造精确年代、数字和政策；产品专属信息只能来自锁定事实；
 6. 四条的核心问题必须不同，并避开上一组标题。
 ${input.retryHint?`\n特别注意：${input.retryHint}\n`:""}
 产品：${input.productName}
 产品摘要：${input.productSummary}
+资料里的主观描述：${JSON.stringify(input.subjectiveClaims)}
+编辑列出的候选角度：${JSON.stringify(input.contentAngles)}
 锁定事实：${JSON.stringify(input.facts)}
 刷新次数：${input.refreshNo}
-上一组选题：${JSON.stringify(input.previousTitles)}
-搜索素材：${JSON.stringify(input.sourceSummaries)}`,inspirationDraftSchema);
+上一组选题：${JSON.stringify(input.previousTitles)}`,productInspirationDraftSchema);
   }
   async generateKnowledgeInspirations(input:KnowledgeInspirationGenerationInput):Promise<InspirationDraft>{return this.callJson(`为${input.countryName}（${input.countryNameEn}）生成四个中文朋友圈知识选题。只返回 JSON：{"topics":[{"title":"","city":"","country":"${input.countryName}","flag":"${input.flag}","reason":"","audience":"旅行知识读者","content_type":"","angle_type":"resources|history|culture|current","source_index":null}]}。
 四条必须全部属于同一个国家并按 resources、history、culture、current 各一条；不得写产品、路线、价格或报名；不得虚构亲历。current 只有搜索素材非空时才能引用 source_index 写近期动态，否则必须改成稳定的实用科普且 source_index=null。稳定知识避免无来源的精确数字和年代。避开上一组标题。

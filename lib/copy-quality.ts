@@ -1,5 +1,10 @@
-import type { Draft, DraftBlock } from "./ai/types";
+import type { Draft, DraftBlock, GenerationContext } from "./ai/types";
 import { blocksToText } from "./content";
+import { isMetaBlock } from "./copy-meta";
+import { isTagBlock } from "./copy-tags";
+
+/** 正文块：末尾的报价信息块与话题标签块不参与字数、符号与结尾句检查。 */
+const bodyBlocks = (draft: Draft): DraftBlock[] => draft.blocks.filter((block) => !isTagBlock(block) && !isMetaBlock(block));
 
 const visualPattern=/\p{Extended_Pictographic}|[✅【】]/gu;
 
@@ -22,7 +27,7 @@ export function isProductFactBlock(block:DraftBlock):boolean{
 
 /** 只有产品方案段参与与锁定资料的一致性核验。 */
 export function productFactDraft(draft:Draft):Draft{
-  return{blocks:draft.blocks.filter(isProductFactBlock)};
+  return{blocks:draft.blocks.filter(block=>isProductFactBlock(block)&&!isTagBlock(block)&&!isMetaBlock(block))};
 }
 
 /** 知识/灵感段不拦截生成，但逐段提示用户发布前人工复查。 */
@@ -36,7 +41,7 @@ export function manualReviewWarnings(draft:Draft):string[]{
 
 /** 字数偏离建议区间时的提醒，只提示不拦截。 */
 export function lengthWarnings(draft:Draft):string[]{
-  const length=blocksToText(draft.blocks).replace(/\s/g,"").length,[advisedMin,advisedMax]=LENGTH_ADVISED;
+  const length=blocksToText(bodyBlocks(draft)).replace(/\s/g,"").length,[advisedMin,advisedMax]=LENGTH_ADVISED;
   if(length>advisedMax)return[`全文约${length}字，多于建议的${advisedMin}-${advisedMax}字，发布前可适当精简。`];
   if(length<advisedMin)return[`全文约${length}字，少于建议的${advisedMin}-${advisedMax}字，发布前可适当补充。`];
   return[];
@@ -47,7 +52,7 @@ export function lengthWarnings(draft:Draft):string[]{
  * 模型对中文字符数不敏感，给出「当前多少字、要压到多少」比只给区间有效得多。
  */
 export function lengthRepairHints(draft:Draft):string[]{
-  const length=blocksToText(draft.blocks).replace(/\s/g,"").length,[repairMin,repairMax]=LENGTH_REPAIR,[advisedMin,advisedMax]=LENGTH_ADVISED;
+  const length=blocksToText(bodyBlocks(draft)).replace(/\s/g,"").length,[repairMin,repairMax]=LENGTH_REPAIR,[advisedMin,advisedMax]=LENGTH_ADVISED;
   if(length>repairMax)return[`全文约${length}字，偏长，请精简到${advisedMin}-${advisedMax}字：删掉次要描述与重复表达，只保留必要信息点`];
   if(length<repairMin)return[`全文约${length}字，偏短，请补充到${advisedMin}-${advisedMax}字`];
   return[];
@@ -61,7 +66,7 @@ const dataClaimPattern=/价格|费用|团费|报价|单价|房差|差额|金额|
 
 /** Emoji 数量偏离建议区间时的提醒，只提示不拦截。 */
 export function symbolWarnings(draft:Draft):string[]{
-  const count=(blocksToText(draft.blocks).match(visualPattern)||[]).length,[advisedMin,advisedMax]=SYMBOL_ADVISED;
+  const count=(blocksToText(bodyBlocks(draft)).match(visualPattern)||[]).length,[advisedMin,advisedMax]=SYMBOL_ADVISED;
   if(count<advisedMin)return[`全文只有 ${count} 个 Emoji 或视觉符号，少于建议的 ${advisedMin}-${advisedMax} 个，可适当增加，让段落更有节奏。`];
   if(count>advisedMax)return[`全文有 ${count} 个 Emoji 或视觉符号，多于建议的 ${advisedMin}-${advisedMax} 个，可适当减少。`];
   return[];
@@ -92,9 +97,19 @@ export function transitionIssues(draft:Draft):string[]{
  * 只触发那一次自动修复并在页面上提示，**不拦截**——结构偏好不值得把可用文案判死（用户策略：尽量不拦）。
  */
 export function structureHints(draft:Draft):string[]{
-  const productIndex=draft.blocks.findIndex(isProductFactBlock);
+  const productIndex=draft.blocks.findIndex(block=>isProductFactBlock(block)&&!isTagBlock(block)&&!isMetaBlock(block));
   if(productIndex<0)return["缺少产品方案段落，请在引子之后补上简短的住/行/门票/价格等短句"];
   if(productIndex<2)return["产品内容出现过早（第3段之前），请先写2-3行简短引子再自然引出产品"];
+  return[];
+}
+
+/**
+ * 卖点选题的版式提示：卖点必须落到具体产品信息，而不是抽象夸奖。
+ * 与 structureHints 相反——卖点文案允许事实分散在叙述里，不要求单独成「产品段」，所以只查「有没有具体信息」。
+ */
+export function sellingPointHints(draft:Draft):string[]{
+  const factBlocks=bodyBlocks(draft).filter(isProductFactBlock);
+  if(!factBlocks.length)return["这条卖点没有写进任何具体产品信息，请补上房型、面积、连住晚数、含什么、在哪儿这类可验证的细节"];
   return[];
 }
 
@@ -139,7 +154,7 @@ export function reviewWarnings(draft:Draft):string[]{
 }
 
 /** 分散补足或移除装饰符号，不改正文；锁定段落可排除在自动整理之外。 */
-export function normalizeVisualSymbols(draft:Draft,protectedIds:string[]=[],min=SYMBOL_HARD[0],max=SYMBOL_HARD[1]):Draft{
+export function normalizeVisualSymbols(draft:Draft,protectedIds:string[]=[],min=SYMBOL_HARD[0],max=SYMBOL_HARD[1],targetSize=SYMBOL_TARGET):Draft{
   let excess=(blocksToText(draft.blocks).match(visualPattern)||[]).length-max;
   const protectedSet=new Set(protectedIds),blocks=draft.blocks.map(block=>({...block}));
   for(let index=blocks.length-1;index>=0&&excess>0;index--){
@@ -153,7 +168,7 @@ export function normalizeVisualSymbols(draft:Draft,protectedIds:string[]=[],min=
   let count=(blocksToText(blocks).match(visualPattern)||[]).length;
   // 补足：第一轮在段首加前缀（每段最多一个），第二轮在段末追加（比连续前缀自然）。
   // 段末一轮跳过最后一段，避免遮住“结尾句完整”的判定。每段最多承担 2 个，故目标不超过 2n-1。
-  const target=Math.max(min,Math.min(SYMBOL_TARGET,blocks.length*2-1));
+  const target=Math.max(min,Math.min(targetSize,blocks.length*2-1));
   const prefixes=["✨ ","🌍 ","📍 ","🏛️ ","🌿 ","🧭 "];
   // 行首已有标记的段落不再补前缀，否则会出现「🏛️ 🏛️ 文字」这种重复标记。
   const hasLeadingSymbol=(value:string)=>/^\s*(?:\p{Extended_Pictographic}|✅|【)/u.test(value);
@@ -177,9 +192,18 @@ export function normalizeVisualSymbols(draft:Draft,protectedIds:string[]=[],min=
   return{blocks};
 }
 
+/**
+ * 按选题类别整理符号。
+ * 卖点文案是叙述体，符号只做点睛：补足上限压到 6，避免自动补前缀把「🏛️ 所以这次提前锁了一间木屋」这种通用标记塞进叙述句。
+ */
+const SELLING_SYMBOL_TARGET=6;
+export function normalizeForAngle(draft:Draft,angleType?:GenerationContext["angleType"],protectedIds:string[]=[]):Draft{
+  return normalizeVisualSymbols(draft,protectedIds,SYMBOL_HARD[0],SYMBOL_HARD[1],angleType==="selling_point"?SELLING_SYMBOL_TARGET:SYMBOL_TARGET);
+}
+
 export function copyQualityIssues(draft:Draft){
   const issues:string[]=[];
-  const text=blocksToText(draft.blocks);
+  const body=bodyBlocks(draft),text=blocksToText(body);
   const visualCount=(text.match(visualPattern)||[]).length;
   // 字数**不再拦截**：偏离建议区间只由 lengthRepairHints 触发一次修复、最终 lengthWarnings 提示。
   // （用户反馈连续出现「字数超限导致生成失败」——模型数不准中文字符，硬拦截误杀率太高。）
@@ -187,9 +211,9 @@ export function copyQualityIssues(draft:Draft){
   const [symbolMin,symbolMax]=SYMBOL_HARD;
   if(visualCount<symbolMin||visualCount>symbolMax)issues.push(`Emoji或视觉符号应为${symbolMin}-${symbolMax}个，当前约${visualCount}个（建议${SYMBOL_ADVISED[0]}-${SYMBOL_ADVISED[1]}个）`);
   // 短句分行风格下，模型可能一段一行，段数上限相应放宽。
-  if(draft.blocks.length<4||draft.blocks.length>14)issues.push("全文应分为4-14个段落");
+  if(body.length<4||body.length>14)issues.push("全文应分为4-14个段落");
   // 「产品段出现过早/缺失」属版式偏好，只触发一次修复并在页面上提示，不再拦截（见 structureHints）。
-  const ending=draft.blocks.at(-1)?.text.trim()||"";
+  const ending=body.at(-1)?.text.trim()||"";
   if(ending.length<8||/[，、：；（(｜|\/-]$/.test(ending)||/(以及|还有|包括|比如|例如|同时|并且|和|与)$/.test(ending))issues.push("结尾句不完整或疑似被截断");
   const pairs:[[string,string],[string,string]]=[["（","）"],["【","】"]];
   for(const [open,close] of pairs)if((text.split(open).length-1)!==(text.split(close).length-1))issues.push(`存在未闭合的${open}${close}`);

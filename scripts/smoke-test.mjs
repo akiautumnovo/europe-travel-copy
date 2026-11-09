@@ -76,9 +76,10 @@ check("产品列表读回事实数", (await api("/api/products")).data.find((p) 
 console.log("=== 3. 产品灵感 + 单篇生成 ===");
 const inspiration = await api(`/api/inspiration/today?productId=${productId}`);
 const angleTypes = inspiration.data.topics?.map((topic) => topic.angleType).sort() ?? [];
-check("四类产品灵感", inspiration.status === 200 && angleTypes.join(",") === "culture,current,history,resources", angleTypes.join(" / "));
+check("四类产品灵感", inspiration.status === 200 && angleTypes.join(",") === "culture,history,resources,selling_point", angleTypes.join(" / "));
+check("第四张是产品卖点", inspiration.data.topics?.[3]?.angleType === "selling_point", `${inspiration.data.topics?.[3]?.title || "缺失"} / ${(inspiration.data.topics?.[3]?.sellingPoints || []).join("、") || "无支撑点"}`);
 check("灵感绑定当前产品", inspiration.data.topics?.every((topic) => topic.productId === productId), `${inspiration.data.topics?.length || 0} 条`);
-const selectedInspiration = inspiration.data.topics?.find((topic) => topic.angleType !== "current") || inspiration.data.topics?.[0];
+const selectedInspiration = inspiration.data.topics?.find((topic) => topic.angleType !== "selling_point") || inspiration.data.topics?.[0];
 const knowledgeInspiration = await api("/api/inspiration/today?mode=knowledge&country=ES");
 const knowledgeAngles = knowledgeInspiration.data.topics?.map((topic) => topic.angleType).sort() ?? [];
 check("四类无产品灵感", knowledgeInspiration.status === 200 && knowledgeAngles.join(",") === "culture,current,history,resources" && knowledgeInspiration.data.topics?.every((topic) => topic.productId === null && topic.countryCode === "ES"), knowledgeAngles.join(" / "));
@@ -93,6 +94,12 @@ const generation = await api("/api/generation/copy", {
 check("生成单篇文案", generation.status === 201, generation.status === 201 ? `V${generation.data.versionNo}` : JSON.stringify(generation.data).slice(0, 160));
 const contentId = generation.data.contentId;
 check("仅保存一个初始版本", generation.data.versionNo === 1 && Array.isArray(generation.data.draft?.blocks), `versionNo=${generation.data.versionNo}`);
+const tagLine = generation.data.draft?.blocks?.at(-1)?.text || "";
+check("文案末尾带话题标签", /^#[^\s#]+(?:\s+#[^\s#]+)+$/.test(tagLine), tagLine.slice(0, 80));
+// 报价排版固定存在，资料里没有的项目留空由用户填——缺价格/班期不能导致不输出。
+const copyBlocks = generation.data.draft?.blocks ?? [];
+const metaIndex = copyBlocks.findIndex((block) => /^✈️ 产品[:：]/.test((block.text || "").trim()));
+check("文案带报价排版", metaIndex === copyBlocks.length - 2, metaIndex >= 0 ? copyBlocks[metaIndex].text.split("\n").map((line) => line || "（空行）").join(" / ").slice(0, 90) : "缺少报价块");
 
 console.log("=== 4. 详情 + 版本列表（all().results 路径）===");
 const detail = await api(`/api/contents/${contentId}`);

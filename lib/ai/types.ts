@@ -56,12 +56,28 @@ export type Draft = z.infer<typeof draftSchema>;
 export type Verification = z.infer<typeof verificationSchema>;
 export type LockedFact = { field:string; value:string; source_quote?:string };
 export type GenerationSource = { title:string; content:string; institution:string; url?:string };
-export type GenerationContext = { topic:string; facts:LockedFact[]; salesIntensity:0|1|2; stylePreferences:string[]; angleType?:"culture"|"history"|"resources"|"current"|"custom"; sources?:GenerationSource[]; contentMode?:"product"|"knowledge"; countryCode?:string; countryName?:string; countryNameEn?:string };
+export type GenerationContext = { topic:string; facts:LockedFact[]; salesIntensity:0|1|2; stylePreferences:string[]; angleType?:"culture"|"history"|"resources"|"current"|"selling_point"|"custom"; sources?:GenerationSource[]; contentMode?:"product"|"knowledge"; countryCode?:string; countryName?:string; countryNameEn?:string; productSummary?:string };
 export type RevisionInput = GenerationContext & { blocks:DraftBlock[]; lockedBlockIds:string[]; instruction:string; targetBlockId?:string };
-export const inspirationAngleSchema=z.enum(["culture","history","resources","current"]);
-export const inspirationDraftSchema=z.object({topics:z.array(z.object({title:z.string().min(4).refine(value=>(value.match(/[\u4e00-\u9fff]/g)||[]).length>=4,"标题必须为中文"),city:z.string().min(1),country:z.string().min(1),flag:z.string().min(1),reason:z.string().min(4),audience:z.string().min(2),content_type:z.string().min(2),angle_type:inspirationAngleSchema,source_index:z.number().int().min(0).nullable()})).length(4)});
-export type InspirationDraft=z.infer<typeof inspirationDraftSchema>;
-export type InspirationGenerationInput={productId:string;productName:string;facts:LockedFact[];productSummary:string;sourceSummaries:Array<{title:string;content:string;institution:string}>;previousTitles:string[];refreshNo:number;retryHint?:string};
+// 产品灵感固定四条：三条目的地内容角度 + 一条从产品资料归纳的卖点。
+// 知识灵感仍是目的地四角度（含近期动态），两者共用同一套字段定义。
+const inspirationTopicBase = {
+  title: z.string().min(4).refine(value => (value.match(/[\u4e00-\u9fff]/g) || []).length >= 4, "标题必须为中文"),
+  city: z.string().min(1),
+  country: z.string().min(1),
+  flag: z.string().min(1),
+  reason: z.string().min(4),
+  audience: z.string().min(2),
+  content_type: z.string().min(2),
+  source_index: z.number().int().min(0).nullable(),
+};
+export const knowledgeAngleSchema = z.enum(["culture", "history", "resources", "current"]);
+export const productAngleSchema = z.enum(["culture", "history", "resources", "selling_point"]);
+export const inspirationDraftSchema = z.object({ topics: z.array(z.object({ ...inspirationTopicBase, angle_type: knowledgeAngleSchema })).length(4) });
+/** 卖点卡片额外带一组可感知支撑点，用于首页卡片的标签行。 */
+export const productInspirationDraftSchema = z.object({ topics: z.array(z.object({ ...inspirationTopicBase, angle_type: productAngleSchema, selling_points: z.array(z.string().trim().min(1)).max(5).default([]) })).length(4) });
+export type InspirationDraft = z.infer<typeof inspirationDraftSchema>;
+export type ProductInspirationDraft = z.infer<typeof productInspirationDraftSchema>;
+export type InspirationGenerationInput = { productId:string; productName:string; facts:LockedFact[]; productSummary:string; subjectiveClaims:string[]; contentAngles:string[]; previousTitles:string[]; refreshNo:number; retryHint?:string };
 export type KnowledgeInspirationGenerationInput={countryCode:string;countryName:string;countryNameEn:string;flag:string;sourceSummaries:Array<{title:string;content:string;institution:string}>;previousTitles:string[];refreshNo:number;retryHint?:string};
 const storyboardRoleSchema=z.preprocess(value=>{if(!value||typeof value!=="object")return value;const item=value as Record<string,unknown>;return{id:item.id,label:item.label,description:item.description,searchTheme:item.searchTheme??item.search_theme??item.theme}},z.object({id:z.string().min(1),label:z.string().min(1),description:z.string().min(1),searchTheme:z.string().min(1)}));
 const storyboardThemeSchema=z.preprocess(value=>{if(!value||typeof value!=="object")return value;const item=value as Record<string,unknown>;return{label:item.label??item.name,query:item.query??item.search_query??item.searchQuery}},z.object({label:z.string().min(1),query:z.string().min(1)}));

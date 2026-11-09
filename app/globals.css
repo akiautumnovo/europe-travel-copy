@@ -273,3 +273,9 @@ html,body{max-width:100%;overflow-x:hidden}.mobile-editor-bar{display:none}.sele
 .moments-layout-head button{padding:4px 9px;border:0.5px solid #c9d8da;border-radius:8px;background:#fff;color:#3d6b77;font-size:12px;cursor:pointer}
 .moments-layout-head button:hover{border-color:#8ecfc7;color:#126d6c}
 .moments-layout-note p{margin:5px 0 0;color:#5b7481;font-size:12px;line-height:1.6}
+
+/* 首页第四张卡片：产品卖点。与三条目的地知识卡区分开——标签更实、带支撑点、边框偏青绿。 */
+.topic-card.selling{border-color:#b9e2d6;box-shadow:0 10px 26px #147f741f}
+.topic-card.selling .topic-art{background:linear-gradient(155deg,#9fe0cf,#2c7d70)}
+.selling-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;max-width:100%}
+.selling-chips span{padding:3px 8px;border:1px solid #d3e9e1;border-radius:8px;background:#f2faf7;color:#23685c;font-size:12px;font-weight:700;line-height:1.5}

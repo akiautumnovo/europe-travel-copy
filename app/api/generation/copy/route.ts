@@ -2,7 +2,9 @@ import { getUserApiKeys } from "@/lib/user-api-keys";
 import { z } from "zod";
 import { getAIProvider } from "../../../../lib/ai";
 import { blocksToText,normalizeFacts,parseJson } from "../../../../lib/content";
-import { commonSenseFactIssues,copyQualityIssues,lengthRepairHints,LENGTH_ADVISED,normalizeVisualSymbols,productFactDraft,reviewWarnings,structureHints,transitionIssues,unfitInfoHits } from "../../../../lib/copy-quality";
+import { appendMetaBlock,buildCopyMeta } from "../../../../lib/copy-meta";
+import { appendTagBlock,buildCopyTags } from "../../../../lib/copy-tags";
+import { commonSenseFactIssues,copyQualityIssues,lengthRepairHints,LENGTH_ADVISED,normalizeForAngle,normalizeVisualSymbols,productFactDraft,reviewWarnings,sellingPointHints,structureHints,transitionIssues,unfitInfoHits } from "../../../../lib/copy-quality";
 import type { GenerationContext } from "../../../../lib/ai/types";
 import type { InspirationTopic } from "../../../../lib/inspiration";
 import { labels } from "../../../../lib/style";
@@ -31,6 +33,8 @@ export async function POST(request:Request){
    if(initialLength<180||initialLength>360||quality.length){draft=normalizeVisualSymbols(await ai.reviseCopy({...context,blocks:draft.blocks,lockedBlockIds:[],instruction:`把全文调整到 220-320 个非空白字符，保持纯知识分享、9-14 行短句、5-10 个视觉符号和完整结尾；闭合全部括号；不要加入产品、价格、班期、报名或销售引导。当前约 ${initialLength} 字。${quality.join("；")}`}));quality=copyQualityIssues(draft)}
    if(quality.length)return json({code:"COPY_QUALITY_FAILED",error:`文案完整性检查未通过：${quality.join("；")}`},{status:422});
    const verification=await ai.verifyCopy(context,draft),warnings=[...reviewWarnings(draft),...verification.fact_issues,...verification.naturalness_issues];if(length()<220||length()>320)warnings.unshift(`当前约 ${length()} 字，建议发布前调整到 220-320 字`);
+   // 话题标签在检查之后追加：字数、符号与结尾句都按正文判定，标签不参与。
+   draft=appendTagBlock(draft,buildCopyTags({countryCode:daily.country.code,angleType:inspiration.angleType}));
    const id=crypto.randomUUID(),now=new Date().toISOString(),topicMeta={mode:"knowledge",country:daily.country,inspiration};
    await db().prepare("INSERT INTO contents (id,user_id,product_id,topic_title,topic_meta,source_input,sales_intensity,status,product_snapshot,fingerprint,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,user.userId,null,inspiration.title,JSON.stringify(topicMeta),inspiration.title,0,"draft","{}",JSON.stringify({countries:[daily.country.name],theme:inspiration.title,product:null,contentTypes:[inspiration.angleType]}),now,now).run();
    await db().prepare("INSERT INTO content_versions (id,content_id,user_id,version_no,strategy_type,text_content,blocks,locked_block_ids,change_type,change_instruction,is_adopted,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,0,?)").bind(crypto.randomUUID(),id,user.userId,1,"single",blocksToText(draft.blocks),JSON.stringify(draft.blocks),"[]","initial",inspiration.angleType,now).run();
@@ -45,19 +49,36 @@ export async function POST(request:Request){
   const topic=input.customTopic||inspiration!.title,sources=(inspiration?.sources||[]).map(source=>({title:source.title,content:source.content,institution:source.institution,url:source.url}));
   if(inspiration?.angleType==="current"&&inspiration.verification==="verified"&&!sources.length)return json({error:"近期信息缺少可靠来源，请刷新灵感后再试"},{status:422});
   const style=await db().prepare("SELECT stable_preferences FROM style_dna WHERE user_id=?").bind(user.userId).first<{stable_preferences:string}>();
-  const context:GenerationContext={topic,facts,salesIntensity:1,stylePreferences:labels(style?.stable_preferences),angleType:inspiration?.angleType||"custom",sources};
+  const productSummary=parseJson<{product_summary?:string}>(product.ai_analysis,{}).product_summary||"";
+  const context:GenerationContext={topic,facts,salesIntensity:1,stylePreferences:labels(style?.stable_preferences),angleType:inspiration?.angleType||"custom",sources,productSummary};
   const ai=getAIProvider((await getUserApiKeys(user.userId)).deepseek),strategy={type:"advisor" as const,title:"产品知识分享",approach:"前半段知识内容，后半段自然连接产品方案",opening:topic};
-  let draft=normalizeVisualSymbols(await ai.generateCopy(context,strategy)),verification=await ai.verifyCopy(context,productFactDraft(draft));
+  let draft=normalizeForAngle(await ai.generateCopy(context,strategy),context.angleType),verification=await ai.verifyCopy(context,productFactDraft(draft));
   const currentLength=()=>blocksToText(draft.blocks).replace(/\s/g,"").length;
+  // 卖点选题自成一套版式：只讲一个卖点，事实分散在叙述里。常规「引子+产品罗列」的判据会误判它，这里换成「有没有具体信息」。
+  const sellingPoint=context.angleType==="selling_point";
+  const layoutRule=sellingPoint
+    ?"这是产品卖点选题：保持「断言或困扰开头 → 做法取舍 → 卖点拆到具体规格 → 场景画面 → 情绪收束」的顺序，全篇只讲一个卖点；不要改成「住宿｜航班｜餐食｜门票」的清单，也不要补 2-3 段泛泛的引子；"
+    :"保持短句分行排版：一行一个短句、用换行分隔，同类信息用｜并列，不要写成大段散文；前2-3个block只写简短引子，不要展开长篇科普；产品部分只用简洁短句罗列（住宿｜交通与航班｜班期｜门票与官导｜餐食｜价格与优惠），产品段第一句先承接上文再引出产品，禁止生硬转折；";
+  const symbolRule=sellingPoint
+    ?"6-10个Emoji或视觉符号，放句尾点睛或关键行行首，不要每段都顶一个；"
+    :"8-14个Emoji或视觉符号，主要放行首做标记（住宿🏨 交通✈️ 餐食🍽️ 门票🎫 价格💰 优惠🎁 收束🌇）；";
   // 触发「唯一一次质量修复」的条件：结构问题、常识问题、过渡生硬、字数明显偏离、版式偏好（产品段过早/缺失）、条款类信息。
   // 注意字数与「产品段过早/缺失」都不再拦截生成，只借这次修复调整；修完仍不理想只作提示。
+  const collect=()=>({issues:copyQualityIssues(draft),transitions:sellingPoint?[]:transitionIssues(draft),structures:sellingPoint?sellingPointHints(draft):structureHints(draft),unfit:unfitInfoHits(draft)});
   const lengthHints=lengthRepairHints(draft);
-  let factIssues=verification.fact_safe?[]:commonSenseFactIssues(verification.fact_issues),issues=copyQualityIssues(draft),transitions=transitionIssues(draft),structures=structureHints(draft),unfit=unfitInfoHits(draft);
-  if(issues.length||factIssues.length||transitions.length||structures.length||lengthHints.length||unfit.length){draft=normalizeVisualSymbols(await ai.reviseCopy({...context,blocks:draft.blocks,lockedBlockIds:[],instruction:`这是唯一一次质量修复。保持短句分行排版：一行一个短句、用换行分隔，同类信息用｜并列，不要写成大段散文；全文${LENGTH_ADVISED[0]}-${LENGTH_ADVISED[1]}个非空白字符（当前约${currentLength()}字）、9-14行、段落数4-14个；8-14个Emoji或视觉符号，主要放行首做标记（住宿🏨 交通✈️ 餐食🍽️ 门票🎫 价格💰 优惠🎁 收束🌇）；前2-3个block只写简短引子，不要展开长篇科普；产品部分只用简洁短句罗列（住宿｜交通与航班｜班期｜门票与官导｜餐食｜价格与优惠），产品段第一句先承接上文再引出产品，禁止生硬转折；最后一行必须完整。全篇都不要出现保险与保费金额、退改/取消/退款规则与费用、签证费、小费、押金、行李与税费、单房差与补差价等条款或附加费用信息（也不要把这类行政条款当成引子或知识点），若原文已有请整行删除。凡涉及价格、日期、天数、住宿、航班、名额等数据，只使用锁定事实里的原始写法，不要自行增减或改写数值。修正以下问题：${[...issues,...factIssues,...transitions,...structures,...lengthHints,...(unfit.length?[`不宜出现在朋友圈的条款/附加费用信息：${unfit.join("；")}`]:[])].join("；")}`}));issues=copyQualityIssues(draft);verification=await ai.verifyCopy(context,productFactDraft(draft));factIssues=verification.fact_safe?[]:commonSenseFactIssues(verification.fact_issues);transitions=transitionIssues(draft);structures=structureHints(draft);unfit=unfitInfoHits(draft)}
+  let factIssues=verification.fact_safe?[]:commonSenseFactIssues(verification.fact_issues),shape=collect();
+  if(shape.issues.length||factIssues.length||shape.transitions.length||shape.structures.length||lengthHints.length||shape.unfit.length){
+    draft=normalizeForAngle(await ai.reviseCopy({...context,blocks:draft.blocks,lockedBlockIds:[],instruction:`这是唯一一次质量修复。${layoutRule}全文${LENGTH_ADVISED[0]}-${LENGTH_ADVISED[1]}个非空白字符（当前约${currentLength()}字）、9-14行、段落数4-14个；${symbolRule}最后一行必须完整。全篇都不要出现保险与保费金额、退改/取消/退款规则与费用、签证费、小费、押金、行李与税费、单房差与补差价等条款或附加费用信息（也不要把这类行政条款当成引子或知识点），若原文已有请整行删除。凡涉及价格、日期、天数、住宿、航班、名额等数据，只使用锁定事实里的原始写法，不要自行增减或改写数值。修正以下问题：${[...shape.issues,...factIssues,...shape.transitions,...shape.structures,...lengthHints,...(shape.unfit.length?[`不宜出现在朋友圈的条款/附加费用信息：${shape.unfit.join("；")}`]:[])].join("；")}`}),context.angleType);
+    shape=collect();verification=await ai.verifyCopy(context,productFactDraft(draft));factIssues=verification.fact_safe?[]:commonSenseFactIssues(verification.fact_issues);
+  }
+  const {issues,transitions,structures}=shape;
   if(issues.length)return json({code:"COPY_QUALITY_FAILED",error:`文案完整性检查未通过：${issues.join("；")}`},{status:422});
   if(factIssues.length)throw new FactCheckError(`常识检查未通过：${factIssues.join("；")}`);
   // 过渡、产品段版式仍不理想时只作提示，不拦截（用户策略：尽量不拦）。
   verification={...verification,fact_safe:true,fact_issues:[...reviewWarnings(draft),...transitions,...structures]};
+  // 报价块（产品/价格/班期/早鸟）只用锁定事实原文，标签紧随其后。
+  draft=appendMetaBlock(draft,buildCopyMeta(product.name,facts));
+  draft=appendTagBlock(draft,buildCopyTags({productName:product.name,facts,angleType:context.angleType,contentType:inspiration?.contentType}));
   const id=crypto.randomUUID(),now=new Date().toISOString(),topicMeta={inspiration:inspiration||{angleType:"custom",title:topic,sources:[]}};
   const productSnapshot={id:product.id,name:product.name,facts,analysis:parseJson(product.ai_analysis,{})};
   await db().prepare("INSERT INTO contents (id,user_id,product_id,topic_title,topic_meta,source_input,sales_intensity,status,product_snapshot,fingerprint,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,user.userId,product.id,topic,JSON.stringify(topicMeta),topic,1,"draft",JSON.stringify(productSnapshot),JSON.stringify({countries:inspiration?[inspiration.country]:[],theme:topic,product:product.id,contentTypes:[inspiration?.angleType||"custom"]}),now,now).run();
